@@ -46,7 +46,7 @@ RUN mkdir placeholder && cd placeholder && touch \
     q10_canadian_will.sqlite.sql \
     && cd ..
 
-RUN mv imdb-cmudb2022.db /cmu-15445
+# RUN mv musicbrainz-cmudb2024.db /cmu-15445
 
 
 # # 加载数据库并创建索引
