@@ -67,4 +67,4 @@ CMD ["/bin/bash"]
 # build command
 # docker build --network=host -t <imagename> .
 # run container
-# docker run -it --rm sqlite_homework
+# docker run -it --rm <imagename>
