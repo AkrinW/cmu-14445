@@ -30,7 +30,6 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   auto newRoot = std::make_shared<TrieNode>(*root_);
   auto node = newRoot;
   auto parent = newRoot;
-  int n = key.size();
   for (auto ch: key) {
     auto it = node->children_.find(ch);
     if (node != newRoot) {
