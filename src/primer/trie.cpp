@@ -31,8 +31,8 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   auto node = newRoot;
   auto parent = newRoot;
   int n = key.size();
-  for (int i = 0; i < n; ++i) {
-    auto it = node->children_.find(key[i]);
+  for (auto ch: key) {
+    auto it = node->children_.find(ch);
     if (node != newRoot) {
       parent = node;
     }
@@ -49,8 +49,8 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   auto newValueNode = std::make_shared<TrieNodeWithValue<T>>(
     node->children_, std::make_shared<T>(std::move(value)));
   parent->children_[key.back()] = newValueNode;
-  return Trie(NewRoot);
-  
+  return Trie(newRoot);
+
   // Note that `T` might be a non-copyable type. Always use `std::move` when creating `shared_ptr` on that value.
   // throw NotImplementedException("Trie::Put is not implemented.");
 
