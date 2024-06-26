@@ -27,7 +27,7 @@ auto Trie::Get(std::string_view key) const -> const T * {
 
 template <class T>
 auto Trie::Put(std::string_view key, T value) const -> Trie {
-  auto newRoot = std::make_shared<TrieNode>(*root_);
+  auto newRoot = std::make_shared<TrieNode>(root_.get());
   auto node = newRoot;
   auto parent = newRoot;
   for (auto ch: key) {
@@ -40,7 +40,7 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
       node->children_[ch] = newNode;
       node = newNode;
     } else {
-      auto newNode = std::make_shared<TrieNode>(*it->second);
+      auto newNode = std::make_shared<TrieNode>(it->second.get());
       node->children_[ch] = newNode;
       node = newNode;
     }
