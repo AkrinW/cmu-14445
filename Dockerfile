@@ -108,3 +108,7 @@ CMD ["/bin/bash"]
 # run container
 # docker run -it --rm <imagename>
 # docker run -it bustub-dev
+# docker run -it --name <container> <image>
+# 列出所有容器
+# docker ps -a
+# docker start <container>
