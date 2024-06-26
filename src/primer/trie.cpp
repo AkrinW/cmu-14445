@@ -27,8 +27,32 @@ auto Trie::Get(std::string_view key) const -> const T * {
 
 template <class T>
 auto Trie::Put(std::string_view key, T value) const -> Trie {
+  auto newRoot = std::make_shared<TrieNode>(*root_);
+  auto node = newRoot;
+  auto parent = newRoot;
+  int n = key.size();
+  for (int i = 0; i < n; ++i) {
+    auto it = node->children_.find(key[i]);
+    if (node != newRoot) {
+      parent = node;
+    }
+    if (it == node->children_.end()) {
+      auto newNode = std::make_shared<TrieNode>();
+      node->children_[ch] = newNode;
+      node = newNode;
+    } else {
+      auto newNode = std::make_shared<TrieNode>(*it->second);
+      node->children_[ch] = newNode;
+      node = newNode;
+    }
+  }
+  auto newValueNode = std::make_shared<TrieNodeWithValue<T>>(
+    node->children_, std::make_shared<T>(std::move(value)));
+  parent->children_[key.back()] = newValueNode;
+  return Trie(NewRoot);
+  
   // Note that `T` might be a non-copyable type. Always use `std::move` when creating `shared_ptr` on that value.
-  throw NotImplementedException("Trie::Put is not implemented.");
+  // throw NotImplementedException("Trie::Put is not implemented.");
 
   // You should walk through the trie and create new nodes if necessary. If the node corresponding to the key already
   // exists, you should create a new `TrieNodeWithValue`.
