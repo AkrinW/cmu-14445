@@ -27,7 +27,7 @@ auto Trie::Get(std::string_view key) const -> const T * {
 
 template <class T>
 auto Trie::Put(std::string_view key, T value) const -> Trie {
-  auto newRoot = std::make_shared<TrieNode>(root_.get());
+  auto newRoot = std::make_shared<TrieNode>(*root_);
   auto node = newRoot;
   auto parent = newRoot;
   for (auto ch: key) {
@@ -40,7 +40,7 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
       node->children_[ch] = newNode;
       node = newNode;
     } else {
-      auto newNode = std::make_shared<TrieNode>(it->second.get());
+      auto newNode = std::make_shared<TrieNode>(*it->second);
       node->children_[ch] = newNode;
       node = newNode;
     }
@@ -59,7 +59,6 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 
 auto Trie::Remove(std::string_view key) const -> Trie {
   throw NotImplementedException("Trie::Remove is not implemented.");
-
   // You should walk through the trie and remove nodes if necessary. If the node doesn't contain a value any more,
   // you should convert it to `TrieNode`. If a node doesn't have children any more, you should remove it.
 }
