@@ -39,7 +39,7 @@ TEST(TrieDebugger, TestCase) {
     }
     trie = trie.Put<uint32_t>(key, value);
   }
-
+  
   // Put a breakpoint here.
 
   // (1) How many children nodes are there on the root?
