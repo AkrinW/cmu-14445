@@ -1,6 +1,7 @@
 #include "primer/trie.h"
 #include <string_view>
 #include "common/exception.h"
+#include <stack>
 
 namespace bustub {
 
@@ -28,7 +29,6 @@ auto Trie::Get(std::string_view key) const -> const T * {
 
 template <class T>
 auto Trie::Put(std::string_view key, T value) const -> Trie {
-  // std::cout << 1;
   std::shared_ptr<T> val_p = std::make_shared<T>(std::move(value));
   // std::shared_ptr<T> val_p = nullptr;
   if (key.size() == 0) {
@@ -52,55 +52,16 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
     // newRoot = root_->Clone();
   }
   auto node = newRoot;
-  for (size_t i = 0; i < key.size(); ++i) {
-    if (i == key.size() - 1) {
-      if (node->children_.count(key[i])) {
-        auto nextNode = node->children_[key[i]];
-        auto newNode = std::make_shared<TrieNodeWithValue<T>>(nextNode->children_, std::move(val_p));
-        node->children_[key[i]] = newNode;
-      } else {
-        auto newNode = std::make_shared<TrieNodeWithValue<T>>(std::move(val_p));
-        node->children_[key[i]] = newNode;
-      }
-    } else {
-      if (node->children_.count(key[i])) {
-        auto nextNode = node->children_[key[i]];
-        if (nextNode->is_value_node_) {
-          auto newNode = std::make_shared<TrieNodeWithValue<T>>(std::move(nextNode));
-          node->children_[key[i]] = newNode;
-          node = newNode;
-        } else {
-          auto newNode = std::make_shared<TrieNode>(std::move(nextNode));
-          node->children_[key[i]] = newNode;
-          node = newNode;
-        }
-        // auto newNode = std::make_shared<TrieNode>(std::move(node->children_[key[i]]));
-        // node->children_[key[i]] = 
-      } else {
-        auto newNode = std::make_shared<TrieNode>();
-        node->children_[key[i]] = newNode;
-        node = newNode;
-      }
+  auto parent = node;
+  for (auto ch: key) {
+    if (node->children_.find(ch) == node->children_.end()) {
+      node->children_[ch] = std::make_shared<TrieNode>();
     }
+    parent = node;
+    node = node->children_.at(ch)->Clone();
+    parent->children_.at(ch) = node;
   }
-  // for (auto ch: key) {
-  //   auto it = node->children_.find(ch);
-  //   if (node != newRoot) {
-  //     parent = node;
-  //   }
-  //   if (it == node->children_.end()) {
-  //     auto newNode = std::make_shared<TrieNode>();
-  //     node->children_[ch] = newNode;
-  //     node = newNode;
-  //   } else {
-  //     auto newNode = it->second->Clone();
-  //     // std::make_shared<TrieNode>(*it->second);
-  //     node->children_[ch] = newNode;
-  //     node = newNode;
-  //   }
-  // }
-  // auto newValueNode = std::make_shared<TrieNodeWithValue<T>>(node->children_, val_p);
-  // parent->children_[key.back()] = newValueNode;
+  parent->children_[key.back()] = std::make_shared<TrieNodeWithValue<T>>(node->children_, val_p);
   return Trie(std::move(newRoot));
 
   // Note that `T` might be a non-copyable type. Always use `std::move` when creating `shared_ptr` on that value.
@@ -111,7 +72,45 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 }
 
 auto Trie::Remove(std::string_view key) const -> Trie {
-  throw NotImplementedException("Trie::Remove is not implemented.");
+  std::stack<std::shared_ptr<TrieNode>> stk;
+  std::shared_ptr<TrieNode> newRoot = nullptr;
+  if (root_ == nullptr) {
+    newRoot = std::make_shared<TrieNode>();
+  } else {
+    newRoot = root_->Clone();
+  }
+  if (key.size() == 0) {
+    newRoot = std::make_shared<TrieNode>(newRoot->children_);
+    return Trie(newRoot);
+  }
+  auto node = newRoot;
+  for (auto ch: key) {
+    if (node->children_.find(ch) == node->children_.end()) {
+      return Trie(newRoot);
+    }
+    stk.push(node);
+    node = node->children_.at(ch)->Clone();
+    stk.top()->children_.at(ch) = node;
+  }
+  if (node->is_value_node_) {
+    stk.top()->children_[key.back()] = std::make_shared<TrieNode>(node->children_);
+  } else {
+    return Trie(newRoot);
+  }
+  for (size_t i = key.size() - 1; i >= 0 && !stk.empty(); --i) {
+    if (!stk.top()->children_[key[i]]->is_value_node_ && 
+    stk.top()->children_[key[i]]->children_.empty()) {
+      stk.top()->children_.erase(key[i]);
+      stk.pop();
+    } else {
+      break;
+    }
+  }
+  if (newRoot->children_.empty()) {
+    return Trie(nullptr);
+  }
+  return Trie(newRoot);
+  // throw NotImplementedException("Trie::Remove is not implemented.");
   // You should walk through the trie and remove nodes if necessary. If the node doesn't contain a value any more,
   // you should convert it to `TrieNode`. If a node doesn't have children any more, you should remove it.
 }
