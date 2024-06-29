@@ -49,14 +49,10 @@ class StringExpression : public AbstractExpression {
     std::string result = val;
     switch (expr_type_) {
       case StringExpressionType::Lower:
-        std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-          return std::tolower(c);
-        });
+        std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { return std::tolower(c); });
         break;
       case StringExpressionType::Upper:
-        std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-          return std::toupper(c);
-        });
+        std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { return std::toupper(c); });
         break;
       default:
         break;

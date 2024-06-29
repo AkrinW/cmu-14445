@@ -40,11 +40,15 @@ auto Planner::GetFuncCallFromFactory(const std::string &func_name, std::vector<A
   // 2. verify the number of args (should be 1), refer to the test cases for when you should throw an `Exception`.
   // 3. return a `StringExpression` std::shared_ptr.
   if (args.size() == 1) {
+    auto ptr = std::shared_ptr<StringExpression>();
     if (func_name == "lower") {
-      return std::make_shared<StringExpression>(std::move(args[0]), StringExpressionType::Lower);
+      ptr = std::make_shared<StringExpression>(std::move(args[0]), StringExpressionType::Lower);
     } else if (func_name == "upper") {
-      return std::make_shared<StringExpression>(std::move(args[0]), StringExpressionType::Upper);
+      ptr = std::make_shared<StringExpression>(std::move(args[0]), StringExpressionType::Upper);
+    } else {
+      throw Exception(fmt::format("func call {} not supported in planner yet", func_name));
     }
+    return ptr;
   }
   throw Exception(fmt::format("func call {} not supported in planner yet", func_name));
 }
