@@ -124,7 +124,7 @@ DROP VIEW work_type_old;
 
 SELECT * from duckdb_tables();
 ```
-$ cat import.sql | ./duckdb musicbrainz-cmudb2023.duckdb
+$ cat import.sql | ../../duckdb musicbrainz-cmudb2023.duckdb
 
 D .tables
 area                artist_credit_name  medium              release_status    
@@ -132,4 +132,9 @@ artist              artist_type         medium_format       work
 artist_alias        gender              release             work_type         
 artist_credit       language            release_info
 
-$ ./duckdb musicbrainz-cmudb2023.duckdb
+$ ../../duckdb musicbrainz-cmudb2023.duckdb
+sqlite3 musicbrainz-cmudb2023.db
+
+sqlite语法执行
+.read filename执行sql语句
+.schema tablename查看表的结构
