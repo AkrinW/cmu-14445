@@ -55,6 +55,7 @@ FROM RankedResults
 WHERE rank = 1 AND full_date < '1970-04-10'
 ORDER BY full_date ASC, name ASC;
 
+--.read q2_beatles_uk_releases.sqlite.sql
 --result
 sqlite> .read q2_beatles_uk_releases.sqlite.sql
 Please Please Me|1963
@@ -70,3 +71,6 @@ The Beatles' First|1967
 Magical Mystery Tour|1967
 The Beatles|1968
 Abbey Road|1969
+
+Run Time: real 5.434 user 2.813434 sys 1.561444
+sqlite> 

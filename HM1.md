@@ -138,3 +138,4 @@ sqlite3 musicbrainz-cmudb2023.db
 sqlite语法执行
 .read filename执行sql语句
 .schema tablename查看表的结构
+.timer on 打开计时器
