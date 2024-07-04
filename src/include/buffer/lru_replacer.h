@@ -52,7 +52,7 @@ class LRUReplacer : public Replacer {
     LRUNode *next_;
     LRUNode *last_;
     LRUNode(frame_id_t i = 0) : id_(i), next_(nullptr), last_(nullptr) {}
-    LRUNode(frame_id_t i, LRUNode *next = nullptr, LRUNode *last = nullptr) : id_(i), next_(next), last_(next) {}
+    LRUNode(frame_id_t i, LRUNode *next = nullptr, LRUNode *last = nullptr) : id_(i), next_(next), last_(last) {}
   };
   LRUNode *head, *end;
   std::mutex latch_;
