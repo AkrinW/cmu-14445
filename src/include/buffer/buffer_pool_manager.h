@@ -208,5 +208,8 @@ class BufferPoolManager {
   }
 
   // TODO(student): You may add additional private members and helper functions
+
+  void FlushPageNolock(page_id_t page_id);
+  void ResetPageNolock(page_id_t new_page_id, frame_id_t frame_id);
 };
 }  // namespace bustub
