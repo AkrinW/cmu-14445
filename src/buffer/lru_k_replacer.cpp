@@ -89,20 +89,20 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
     p->last_->next_ = p->next_;
     p->next_->last_ = p->last_;
     if (p->history_.size() < k_) {
-        p->next_ = end_;
-        p->last_ = end_->last_;
-        end_->last_->next_ = p;
-        end_->last_ = p;
+      p->next_ = end_;
+      p->last_ = end_->last_;
+      end_->last_->next_ = p;
+      end_->last_ = p;
     } else {
-        auto num = p->history_.front();
-        LRUKNode *q = head_k_->next_;
-        while (!q->history_.empty() && q->history_.front() < num) {
-            q = q->next_;
-        }
-        p->next_ = q;
-        p->last_ = q->last_;
-        q->last_->next_ = p;
-        q->last_ = p;
+      auto num = p->history_.front();
+      LRUKNode *q = head_k_->next_;
+      while (!q->history_.empty() && q->history_.front() < num) {
+        q = q->next_;
+      }
+      p->next_ = q;
+      p->last_ = q->last_;
+      q->last_->next_ = p;
+      q->last_ = p;
     }
   }
 }
@@ -132,7 +132,7 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
     } else {
       auto num = p->history_.back();
       LRUKNode *q = end_->last_;
-      while (!q->history_.empty()  && q->history_.back() > num) {
+      while (!q->history_.empty() && q->history_.back() > num) {
         q = q->last_;
       }
       p->last_ = q;
