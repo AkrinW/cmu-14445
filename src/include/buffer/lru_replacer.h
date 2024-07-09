@@ -14,9 +14,13 @@
 
 #include <list>
 #include <mutex>  // NOLINT
+#include <unordered_map>
 #include <vector>
+<<<<<<< HEAD
 #include <unordered_map>
 
+=======
+>>>>>>> feb0b91f63a2ee49deff65b26f60ef4f7a84ad36
 #include "buffer/replacer.h"
 #include "common/config.h"
 
@@ -52,12 +56,12 @@ class LRUReplacer : public Replacer {
     frame_id_t id_;
     LRUNode *next_;
     LRUNode *last_;
-    LRUNode(frame_id_t i = 0): id_(i), next_(nullptr), last_(nullptr) {}
-    LRUNode(frame_id_t i, LRUNode *next = nullptr, LRUNode *last = nullptr): id_(i), next_(next), last_(next) {}
+    LRUNode(frame_id_t i = 0) : id_(i), next_(nullptr), last_(nullptr) {}
+    LRUNode(frame_id_t i, LRUNode *next = nullptr, LRUNode *last = nullptr) : id_(i), next_(next), last_(last) {}
   };
   LRUNode *head, *end;
   std::mutex latch_;
-  std::unordered_map<frame_id_t, LRUNode*> node_store_;
+  std::unordered_map<frame_id_t, LRUNode *> node_store_;
   size_t capacity_;
   size_t size_;
 };

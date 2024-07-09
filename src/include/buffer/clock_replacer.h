@@ -14,6 +14,7 @@
 
 #include <list>
 #include <mutex>  // NOLINT
+#include <unordered_map>
 #include <vector>
 #include <unordered_map>
 #include "buffer/replacer.h"
@@ -51,7 +52,7 @@ class ClockReplacer : public Replacer {
   std::vector<frame_id_t> frame_buffer_;
   std::vector<bool> ref_buffer_;
   std::unordered_map<frame_id_t, int> node_store_;
-  int sub_;
+  size_t sub_;
   size_t capacity_;
   size_t size_;
 };

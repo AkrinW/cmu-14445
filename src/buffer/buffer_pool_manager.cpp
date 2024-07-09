@@ -46,7 +46,7 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     frame_id = free_list_.front();
     free_list_.pop_front();
   } else {
-    if(!replacer_->Evict(&frame_id)) {
+    if (!replacer_->Evict(&frame_id)) {
       return nullptr;
     }
   }
@@ -78,21 +78,21 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
     return nullptr;
   }
   frame_id_t frame_id = -1;
-  Page* page;
+  Page *page;
   if (page_table_.count(page_id) != 0) {
     // 存在page，直接操作并返回。
     frame_id = page_table_.at(page_id);
     page = pages_ + frame_id;
     replacer_->RecordAccess(frame_id);
     replacer_->SetEvictable(frame_id, false);
-    ++page->pin_count_; // pin_count_不是01，而是可以有多个线程pin的，驱逐时，必须让所有的都unpin了才可以。
+    ++page->pin_count_;  // pin_count_不是01，而是可以有多个线程pin的，驱逐时，必须让所有的都unpin了才可以。
   } else {
     // 没有找到，需要new或者替代一个。
     if (!free_list_.empty()) {
       frame_id = free_list_.front();
       free_list_.pop_front();
     } else {
-      if(!replacer_->Evict(&frame_id)) {
+      if (!replacer_->Evict(&frame_id)) {
         return nullptr;
       }
     }
@@ -130,7 +130,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
   return true;
 }
 
-auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool { 
+auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
   if (page_id == INVALID_PAGE_ID) {
     return false;
   }
@@ -155,13 +155,13 @@ void BufferPoolManager::FlushPageNolock(page_id_t page_id) {
 // 把buffer内的page全部写回
 void BufferPoolManager::FlushAllPages() {
   std::lock_guard<std::mutex> lock(latch_);
-  for (auto page: page_table_) {
+  for (auto page : page_table_) {
     auto page_id = page.first;
     FlushPageNolock(page_id);
   }
 }
 
-auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool { 
+auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   std::lock_guard<std::mutex> lock(latch_);
   if (page_table_.count(page_id) == 0) {
     return true;

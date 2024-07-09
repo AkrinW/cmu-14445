@@ -31,11 +31,11 @@ class LRUKNode {
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
 
   std::list<size_t> history_;
-  size_t k_;
   frame_id_t fid_;
+  size_t k_;
   bool is_evictable_;
-  LRUKNode* next;
-  LRUKNode* last;
+  LRUKNode *next_;
+  LRUKNode *last_;
   LRUKNode(frame_id_t f, size_t k, bool e = false);
   ~LRUKNode() = default;
   void PushRecord(size_t timestamp_);
@@ -155,14 +155,14 @@ class LRUKReplacer {
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  std::unordered_map<frame_id_t, LRUKNode*> node_store_;
+  std::unordered_map<frame_id_t, LRUKNode *> node_store_;
   size_t current_timestamp_;
   size_t curr_size_;
   size_t replacer_size_;
   size_t k_;
   std::mutex latch_;
   LRUKNode *head_, *end_;
-  LRUKNode *head_k, *end_k;
+  LRUKNode *head_k_, *end_k_;
 };
 
 }  // namespace bustub
