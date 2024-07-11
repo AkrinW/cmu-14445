@@ -41,7 +41,12 @@ DiskExtendibleHashTable<K, V, KC>::DiskExtendibleHashTable(const std::string &na
       header_max_depth_(header_max_depth),
       directory_max_depth_(directory_max_depth),
       bucket_max_size_(bucket_max_size) {
-  throw NotImplementedException("DiskExtendibleHashTable is not implemented");
+  index_name_ = name;
+  header_page_id_ = INVALID_PAGE_ID;
+  auto header_guard = bpm->NewPageGuarded(&header_page_id_);
+  auto header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();
+  header_page->Init(header_max_depth_);
+  // throw NotImplementedException("DiskExtendibleHashTable is not implemented");
 }
 
 /*****************************************************************************
@@ -50,6 +55,37 @@ DiskExtendibleHashTable<K, V, KC>::DiskExtendibleHashTable(const std::string &na
 template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::GetValue(const K &key, std::vector<V> *result, Transaction *transaction) const
     -> bool {
+  // 获取header_page
+  auto header_guard = bpm_->FetchPageRead(header_page_id_);
+  auto header_page = header_guard.As<ExtendibleHTableHeaderPage>();
+  // hash获取id，如果id非法return false
+  auto hash = Hash(key);
+  auto directory_index = header_page->HashToDirectoryIndex(hash);
+  auto directory_page_id = header_page->GetDirectoryPageId(directory_index);
+  if (directory_page_id == INVALID_PAGE_ID) {
+    return false;
+  }
+  header_guard.Drop();
+
+  // 在directory层
+  auto directory_guard = bpm_->FetchPageRead(directory_page_id);
+  auto directory_page = directory_guard.As<ExtendibleHTableDirectoryPage>();
+  auto bucket_index = directory_page->HashToBucketIndex(hash);
+  auto bucket_page_id = directory_page->GetBucketPageId(bucket_index);
+  if (bucket_page_id == INVALID_PAGE_ID) {
+    return false;
+  }
+  directory_guard.Drop();
+
+  //在bucket层
+  auto bucket_guard = bpm_->FetchPageRead(bucket_page_id);
+  auto bucket_page = bucket_guard.As<ExtendibleHTableBucketPage<K, V, KC>>();
+  V value;
+  if (bucket_page->Lookup(key, value, cmp_)) {
+    result->push_back(value);
+    return true;
+  }
+  
   return false;
 }
 
