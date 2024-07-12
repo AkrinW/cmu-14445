@@ -44,7 +44,7 @@ DiskExtendibleHashTable<K, V, KC>::DiskExtendibleHashTable(const std::string &na
   index_name_ = name;
   header_page_id_ = INVALID_PAGE_ID;
   auto header_guard = bpm->NewPageGuarded(&header_page_id_);
-  auto header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();
+  auto *header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();
   header_page->Init(header_max_depth_);
   // throw NotImplementedException("DiskExtendibleHashTable is not implemented");
 }
@@ -65,17 +65,18 @@ auto DiskExtendibleHashTable<K, V, KC>::GetValue(const K &key, std::vector<V> *r
   auto hash = Hash(key);
   // 获取header_page
   auto header_guard = bpm_->FetchPageRead(header_page_id_);
-  auto header_page = header_guard.As<ExtendibleHTableHeaderPage>();
+  auto *header_page = header_guard.As<ExtendibleHTableHeaderPage>();
   auto directory_index = header_page->HashToDirectoryIndex(hash);
   auto directory_page_id = header_page->GetDirectoryPageId(directory_index);
-  if (static_cast<int>(directory_page_id) == INVALID_PAGE_ID) {
+  if (directory_page_id == INVALID_PAGE_ID) {
     return false;
   }
   header_guard.Drop();
 
   // 在directory层
+  const ExtendibleHTableDirectoryPage *directory_page;
   auto directory_guard = bpm_->FetchPageRead(directory_page_id);
-  auto directory_page = directory_guard.template As<ExtendibleHTableDirectoryPage>();
+  directory_page = directory_guard.template As<ExtendibleHTableDirectoryPage>();
   auto bucket_index = directory_page->HashToBucketIndex(hash);
   auto bucket_page_id = directory_page->GetBucketPageId(bucket_index);
   if (bucket_page_id == INVALID_PAGE_ID) {
@@ -84,8 +85,9 @@ auto DiskExtendibleHashTable<K, V, KC>::GetValue(const K &key, std::vector<V> *r
   directory_guard.Drop();
 
   //在bucket层
+  const ExtendibleHTableBucketPage<K, V, KC> *bucket_page;
   auto bucket_guard = bpm_->FetchPageRead(bucket_page_id);
-  auto bucket_page = bucket_guard.template As<ExtendibleHTableBucketPage<K, V, KC>>();
+  bucket_page = bucket_guard.template As<ExtendibleHTableBucketPage<K, V, KC>>();
   V value;
   if (bucket_page->Lookup(key, value, cmp_)) {
     result->push_back(value);
@@ -105,19 +107,18 @@ auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Tra
   // std::cout << bpm_->GetPoolSize() << '\n';
   // std::cout << "insert" << key << ':' << value << '\n';
   auto hash = Hash(key);
-  
+
   // header层
   auto header_guard = bpm_->FetchPageWrite(header_page_id_);
-  auto header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();
+  auto *header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();
   auto directory_index = header_page->HashToDirectoryIndex(hash);
   auto directory_page_id = header_page->GetDirectoryPageId(directory_index);
-  header_guard.Drop();
 
   // directory层
   WritePageGuard directory_guard;
   ExtendibleHTableDirectoryPage *directory_page;
-  if (static_cast<int>(directory_page_id) == INVALID_PAGE_ID) {
-    directory_guard = bpm_->NewPageGuarded(reinterpret_cast<bustub::page_id_t *>(&directory_page_id)).UpgradeWrite();
+  if (directory_page_id == INVALID_PAGE_ID) {
+    directory_guard = bpm_->NewPageGuarded(&directory_page_id).UpgradeWrite();
     directory_page = directory_guard.AsMut<ExtendibleHTableDirectoryPage>();
     directory_page->Init(directory_max_depth_);
     header_page->SetDirectoryPageId(directory_index, directory_page_id);
@@ -125,6 +126,7 @@ auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Tra
     directory_guard = bpm_->FetchPageWrite(directory_page_id);
     directory_page = directory_guard.AsMut<ExtendibleHTableDirectoryPage>();
   }
+  header_guard.Drop();
   auto bucket_index = directory_page->HashToBucketIndex(hash);
   auto bucket_page_id = directory_page->GetBucketPageId(bucket_index);
 
@@ -148,22 +150,31 @@ auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Tra
     return true;  //插入成功，返回
   }
   // 插入失败的情况，需要扩充表
-  auto h = 1U << directory_page->GetGlobalDepth();
-  if (directory_page->GetLocalDepth(bucket_index) == directory_page->GetGlobalDepth()) {
-    if (directory_page->GetGlobalDepth() >= directory_page->GetMaxDepth()) {
+  auto size = directory_page->Size();
+  if (directory_page->GetGlobalDepth() == directory_page->GetLocalDepth(bucket_index)) {
+    if (directory_page->GetGlobalDepth() == directory_page->GetMaxDepth()) {
       return false;
     }
     directory_page->IncrGlobalDepth();
-    //更新目录页
-    for (uint32_t i = h; i < (1U << directory_page->GetGlobalDepth()); ++i) {
-      auto new_bucket_page_id = directory_page->GetBucketPageId(i - h);
-      auto new_local_depth = directory_page->GetLocalDepth(i - h);
-      directory_page->SetBucketPageId(i, new_bucket_page_id);
-      directory_page->SetLocalDepth(i, new_local_depth);
-    }
   }
   directory_page->IncrLocalDepth(bucket_index);
-  directory_page->IncrLocalDepth(bucket_index + h);
+  directory_page->IncrLocalDepth(bucket_index+size);
+  // auto h = 1U << directory_page->GetGlobalDepth();
+  // if (directory_page->GetLocalDepth(bucket_index) == directory_page->GetGlobalDepth()) {
+  //   if (directory_page->GetGlobalDepth() >= directory_page->GetMaxDepth()) {
+  //     return false;
+  //   }
+  //   directory_page->IncrGlobalDepth();
+  //   //更新目录页
+  //   for (uint32_t i = h; i < (1U << directory_page->GetGlobalDepth()); ++i) {
+  //     auto new_bucket_page_id = directory_page->GetBucketPageId(i - h);
+  //     auto new_local_depth = directory_page->GetLocalDepth(i - h);
+  //     directory_page->SetBucketPageId(i, new_bucket_page_id);
+  //     directory_page->SetLocalDepth(i, new_local_depth);
+  //   }
+  // }
+  // directory_page->IncrLocalDepth(bucket_index);
+  // directory_page->IncrLocalDepth(bucket_index + h);
   // 拆分bucket
   if (!SplitBucket(directory_page, bucket_page, bucket_index)) {
     return false;

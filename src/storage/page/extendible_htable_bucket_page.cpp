@@ -68,8 +68,8 @@ auto ExtendibleHTableBucketPage<K, V, KC>::Remove(const K &key, const KC &cmp) -
 template <typename K, typename V, typename KC>
 void ExtendibleHTableBucketPage<K, V, KC>::RemoveAt(uint32_t bucket_idx) {
   // throw NotImplementedException("ExtendibleHTableBucketPage not implemented");
-  for (size_t i = bucket_idx; i < size_ - 1; ++i) {
-    array_[i] = array_[i + 1];
+  for (size_t i = bucket_idx + 1; i < size_; ++i) {
+    array_[i - 1] = array_[i];
   }
   --size_;
 }
