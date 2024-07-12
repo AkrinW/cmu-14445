@@ -32,7 +32,7 @@ auto ExtendibleHTableHeaderPage::HashToDirectoryIndex(uint32_t hash) const -> ui
   return hash >> (sizeof(uint32_t) * 8 - max_depth_);
 }
 
-auto ExtendibleHTableHeaderPage::GetDirectoryPageId(uint32_t directory_idx) const -> uint32_t {
+auto ExtendibleHTableHeaderPage::GetDirectoryPageId(uint32_t directory_idx) const -> page_id_t {
   if (directory_idx >= MaxSize()) {
     return INVALID_PAGE_ID;
   }

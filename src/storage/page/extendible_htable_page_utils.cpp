@@ -22,7 +22,7 @@ void ExtendibleHTableHeaderPage::PrintHeader() const {
   LOG_DEBUG("======== HEADER (max_depth_: %u) ========", max_depth_);
   LOG_DEBUG("| directory_idx | page_id |");
   for (uint32_t idx = 0; idx < static_cast<uint32_t>(1 << max_depth_); idx++) {
-    LOG_DEBUG("|    %u    |    %u    |", idx, directory_page_ids_[idx]);
+    LOG_DEBUG("|    %u    |    %d    |", idx, directory_page_ids_[idx]);
   }
   LOG_DEBUG("======== END HEADER ========");
 }

@@ -55,6 +55,12 @@ DiskExtendibleHashTable<K, V, KC>::DiskExtendibleHashTable(const std::string &na
 template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::GetValue(const K &key, std::vector<V> *result, Transaction *transaction) const
     -> bool {
+  // std::cout << "getvalue" << key << '\n';
+  // std::ostringstream oss;
+  // oss << key;
+  // if (oss.str() == "50") {
+  //   PrintHT();
+  // }
   // hash获取id，如果id非法return false
   auto hash = Hash(key);
   // 获取header_page
@@ -96,7 +102,10 @@ auto DiskExtendibleHashTable<K, V, KC>::GetValue(const K &key, std::vector<V> *r
 
 template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Transaction *transaction) -> bool {
+  // std::cout << bpm_->GetPoolSize() << '\n';
+  // std::cout << "insert" << key << ':' << value << '\n';
   auto hash = Hash(key);
+  
   // header层
   auto header_guard = bpm_->FetchPageWrite(header_page_id_);
   auto header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();
@@ -138,7 +147,6 @@ auto DiskExtendibleHashTable<K, V, KC>::Insert(const K &key, const V &value, Tra
   if (bucket_page->Insert(key, value, cmp_)) {
     return true;  //插入成功，返回
   }
-
   // 插入失败的情况，需要扩充表
   auto h = 1U << directory_page->GetGlobalDepth();
   if (directory_page->GetLocalDepth(bucket_index) == directory_page->GetGlobalDepth()) {
@@ -201,6 +209,7 @@ auto DiskExtendibleHashTable<K, V, KC>::SplitBucket(ExtendibleHTableDirectoryPag
       split_bucket->Insert(entry.first, entry.second, cmp_);
     }
   }
+  split_bucket_guard.Drop();
   return true;
 }
 
@@ -239,6 +248,7 @@ void DiskExtendibleHashTable<K, V, KC>::UpdateDirectoryMapping(ExtendibleHTableD
 template <typename K, typename V, typename KC>
 auto DiskExtendibleHashTable<K, V, KC>::Remove(const K &key, Transaction *transaction) -> bool {
   auto hash = Hash(key);
+  // std::cout << "remove" << key << '\n';
   // header层
   auto header_guard = bpm_->FetchPageWrite(header_page_id_);
   auto header_page = header_guard.AsMut<ExtendibleHTableHeaderPage>();

@@ -354,6 +354,7 @@ TEST(ExtendibleHTableConcurrentTest, MixTest2) {
     int64_t value = key & 0xFFFFFFFF;
     EXPECT_EQ(rids[0].GetSlotNum(), value);
   }
+  ht.PrintHT();
 }
 
 }  // namespace bustub
