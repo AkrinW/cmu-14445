@@ -74,6 +74,11 @@ void ExtendibleHTableBucketPage<K, V, KC>::RemoveAt(uint32_t bucket_idx) {
   --size_;
 }
 
+template <class KeyType, class ValueType, class KeyComparator>
+void ExtendibleHTableBucketPage<KeyType, ValueType, KeyComparator>::Clear() {
+  size_ = 0;
+}
+
 template <typename K, typename V, typename KC>
 auto ExtendibleHTableBucketPage<K, V, KC>::KeyAt(uint32_t bucket_idx) const -> K {
   return array_[bucket_idx].first;
