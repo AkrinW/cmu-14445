@@ -87,6 +87,11 @@ class ExtendibleHTableBucketPage {
 
   void RemoveAt(uint32_t bucket_idx);
 
+  void SetAt(const KeyType &key, const ValueType &value, const KeyComparator &cmp, uint32_t bucket_idx);
+
+  // only use in splitbucket
+  void SetSize(uint32_t bucket_idx);
+
   /**
    * @brief Gets the key at an index in the bucket.
    *
