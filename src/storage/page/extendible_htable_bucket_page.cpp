@@ -68,10 +68,33 @@ auto ExtendibleHTableBucketPage<K, V, KC>::Remove(const K &key, const KC &cmp) -
 template <typename K, typename V, typename KC>
 void ExtendibleHTableBucketPage<K, V, KC>::RemoveAt(uint32_t bucket_idx) {
   // throw NotImplementedException("ExtendibleHTableBucketPage not implemented");
-  for (size_t i = bucket_idx; i < size_-1; ++i) {
-    array_[i] = array_[i+1];
+  for (size_t i = bucket_idx + 1; i < size_; ++i) {
+    array_[i - 1] = array_[i];
   }
   --size_;
+}
+
+template <class KeyType, class ValueType, class KeyComparator>
+void ExtendibleHTableBucketPage<KeyType, ValueType, KeyComparator>::SetAt(const KeyType &key, const ValueType &value,
+                                                                          const KeyComparator &cmp,
+                                                                          uint32_t bucket_idx) {
+  if (bucket_idx >= size_) {
+    throw Exception("Out of bucket index");
+  }
+  array_[bucket_idx] = std::make_pair(key, value);
+}
+
+template <class KeyType, class ValueType, class KeyComparator>
+void ExtendibleHTableBucketPage<KeyType, ValueType, KeyComparator>::SetSize(uint32_t bucket_idx) {
+  if (bucket_idx > max_size_) {
+    return;
+  }
+  size_ = bucket_idx;
+}
+
+template <class KeyType, class ValueType, class KeyComparator>
+void ExtendibleHTableBucketPage<KeyType, ValueType, KeyComparator>::Clear() {
+  size_ = 0;
 }
 
 template <typename K, typename V, typename KC>
