@@ -84,6 +84,9 @@ auto main(int argc, char **argv) -> int {
         }
         query += query_c_str;
         linenoiseFree(query_c_str);
+        if (bustub::StringUtil::EndsWith(query, "exit")) {
+          return 0;
+        }
         if (bustub::StringUtil::EndsWith(query, ";") || bustub::StringUtil::StartsWith(query, "\\")) {
           break;
         }

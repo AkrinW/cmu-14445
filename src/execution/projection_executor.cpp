@@ -9,12 +9,13 @@ ProjectionExecutor::ProjectionExecutor(ExecutorContext *exec_ctx, const Projecti
 
 void ProjectionExecutor::Init() {
   // Initialize the child executor
+  std::cout << plan_->ToString() << '\n';
   child_executor_->Init();
 }
 
 auto ProjectionExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   Tuple child_tuple{};
-
+  
   // Get the next tuple
   const auto status = child_executor_->Next(&child_tuple, rid);
 
@@ -27,6 +28,7 @@ auto ProjectionExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   values.reserve(GetOutputSchema().GetColumnCount());
   for (const auto &expr : plan_->GetExpressions()) {
     values.push_back(expr->Evaluate(&child_tuple, child_executor_->GetOutputSchema()));
+    std::cout << values.back().ToString() << '\t' << child_executor_->GetOutputSchema().ToString() << '\n';
   }
 
   *tuple = Tuple{values, &GetOutputSchema()};
