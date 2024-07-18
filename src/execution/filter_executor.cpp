@@ -15,7 +15,7 @@ void FilterExecutor::Init() {
 
 auto FilterExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   auto filter_expr = plan_->GetPredicate();
-  std::cout << filter_expr->ToString() << '\n';
+  // std::cout << filter_expr->ToString() << '\n';
   while (true) {
     // Get the next tuple
     const auto status = child_executor_->Next(tuple, rid);
@@ -25,7 +25,7 @@ auto FilterExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
 
     auto value = filter_expr->Evaluate(tuple, child_executor_->GetOutputSchema());
-    std::cout << value.ToString() << '\t' << child_executor_->GetOutputSchema().ToString() << '\n';
+    // std::cout << value.ToString() << '\t' << child_executor_->GetOutputSchema().ToString() << '\n';
 
     if (!value.IsNull() && value.GetAs<bool>()) {
       return true;

@@ -18,7 +18,7 @@ auto ValuesExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   const auto &row_expr = plan_->GetValues()[cursor_];
   for (const auto &col : row_expr) {
     values.push_back(col->Evaluate(nullptr, dummy_schema_));
-    std::cout << dummy_schema_.ToString() << '\n';
+    // std::cout << dummy_schema_.ToString() << '\n';
   }
 
   *tuple = Tuple{values, &GetOutputSchema()};
