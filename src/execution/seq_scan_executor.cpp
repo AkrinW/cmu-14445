@@ -30,7 +30,7 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
 
 void SeqScanExecutor::Init() {
   // throw NotImplementedException("SeqScanExecutor is not implemented"); s
-  table_oid_ = plan_->GetTableOid();
+  auto table_oid_ = plan_->GetTableOid();
   auto catalog = exec_ctx_->GetCatalog();
   auto table_info = catalog->GetTable(table_oid_);
   auto &table = table_info->table_;
