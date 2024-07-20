@@ -15,18 +15,7 @@
 namespace bustub {
 
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
-    : AbstractExecutor(exec_ctx), plan_(plan) {
-  // table_oid_t oid = plan_->GetTableOid();
-  // table_info_ = exec_ctx_->GetCatalog()->GetTable(oid);
-  // auto iter = table_info_->table_->MakeIterator();
-}
-
-// SeqScanExecutor::~SeqScanExecutor() {
-//     if (iter_ != nullptr) {
-//         delete iter_;
-//     }
-//     iter_ = nullptr;
-// }
+    : AbstractExecutor(exec_ctx), plan_(plan) {}
 
 void SeqScanExecutor::Init() {
   // throw NotImplementedException("SeqScanExecutor is not implemented"); s
@@ -54,7 +43,10 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
     ++*iter_;
     if (!meta.is_deleted_ &&
-        (plan_->filter_predicate_ == nullptr || plan_->filter_predicate_->Evaluate(tuple, schema).GetAs<bool>())) {
+        (plan_->filter_predicate_ == nullptr ||
+         plan_->filter_predicate_
+             ->Evaluate(tuple, GetExecutorContext()->GetCatalog()->GetTable(plan_->GetTableOid())->schema_)
+             .GetAs<bool>())) {
       break;
     }
   }
