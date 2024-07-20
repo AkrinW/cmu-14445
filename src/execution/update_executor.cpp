@@ -39,7 +39,7 @@ auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   //   auto table_index = catalog->GetIndex(table_oid);
   auto table_indexes = catalog->GetTableIndexes(table_name);
 
-  if (is_updated) {
+  if (is_updated_) {
     return false;
   }
   int count = 0;
@@ -66,15 +66,15 @@ auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     for (auto &index_info : table_indexes) {
       auto index = index_info->index_.get();
       auto key_attrs = index->GetKeyAttrs();
-      // auto key_schema = index->GetKeySchema();s
-      auto old_key = child_tuple.KeyFromTuple(table_schema, *index->GetKeySchema(), key_attrs);
-      auto new_key = update_tuple.KeyFromTuple(table_schema, *index->GetKeySchema(), key_attrs);
+      auto key_schema = index->GetKeySchema();
+      auto old_key = child_tuple.KeyFromTuple(table_schema, *key_schema, key_attrs);
+      auto new_key = update_tuple.KeyFromTuple(table_schema, *key_schema, key_attrs);
       index->DeleteEntry(old_key, child_rid, exec_ctx_->GetTransaction());
       index->InsertEntry(new_key, update_rid, exec_ctx_->GetTransaction());
     }
   }
 
-  is_updated = true;
+  is_updated_ = true;
   std::vector<Value> result = {{TypeId::INTEGER, count}};
   *tuple = Tuple(result, &GetOutputSchema());
   return true;
