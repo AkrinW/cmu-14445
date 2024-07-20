@@ -63,7 +63,7 @@ class InsertExecutor : public AbstractExecutor {
   // TableInfo table_info_;
   // TableInfo *table_info_;
 
-  bool is_done_;
+  bool is_done_{false};
 };
 
 }  // namespace bustub
