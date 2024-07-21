@@ -1,14 +1,14 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// nested_loop_join_executor.h
-//
-// Identification: src/include/execution/executors/nested_loop_join_executor.h
-//
-// Copyright (c) 2015-2021, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
+// //===----------------------------------------------------------------------===//
+// //
+// //                         BusTub
+// //
+// // nested_loop_join_executor.h
+// //
+// // Identification: src/include/execution/executors/nested_loop_join_executor.h
+// //
+// // Copyright (c) 2015-2021, Carnegie Mellon University Database Group
+// //
+// //===----------------------------------------------------------------------===//
 
 #pragma once
 
@@ -20,6 +20,10 @@
 #include "execution/plans/nested_loop_join_plan.h"
 #include "storage/table/tuple.h"
 
+// #include "binder/table_ref/bound_join_ref.h"
+// #include "common/exception.h"
+// #include "type/value_factory.h"
+// #include "catalog/schema.h"
 namespace bustub {
 
 /**
@@ -55,6 +59,21 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const NestedLoopJoinPlanNode *plan_;
+
+  std::unique_ptr<AbstractExecutor> left_executor_;
+  std::unique_ptr<AbstractExecutor> right_executor_;
+
+  bool if_left_join_{false};
+  bool if_right_join_ {false};
+  // bool is_joined_{false};
+  bool match_{false};
+  Tuple left_tuple_{};
+  RID left_rid_{};
+  Tuple right_tuple_{};
+  RID right_rid_{};
+
+
 };
 
 }  // namespace bustub
+
