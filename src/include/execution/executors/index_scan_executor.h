@@ -52,6 +52,6 @@ class IndexScanExecutor : public AbstractExecutor {
   std::vector<RID> result_rid_;
   TableHeap *table_heap_;
 
-  bool is_scaned_{false};// 很重要，没有完成标志，会卡死循环。
+  bool is_scaned_{false};  // 很重要，没有完成标志，会卡死循环。
 };
 }  // namespace bustub

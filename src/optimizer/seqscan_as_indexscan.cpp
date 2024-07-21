@@ -1,9 +1,9 @@
-#include "optimizer/optimizer.h"
-#include "execution/plans/seq_scan_plan.h"
-#include "execution/plans/index_scan_plan.h"
 #include "execution/expressions/column_value_expression.h"
 #include "execution/expressions/comparison_expression.h"
 #include "execution/expressions/logic_expression.h"
+#include "execution/plans/index_scan_plan.h"
+#include "execution/plans/seq_scan_plan.h"
+#include "optimizer/optimizer.h"
 #include "storage/index/generic_key.h"
 namespace bustub {
 
@@ -19,12 +19,12 @@ auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &pl
   // paln计划是顺序扫描，转换成索引
   if (optimized_plan->GetType() == PlanType::SeqScan) {
     const auto &seq_scan_plan = dynamic_cast<const SeqScanPlanNode &>(*optimized_plan);
-    auto predicate =seq_scan_plan.filter_predicate_;
-    if (predicate != nullptr) {//如果谓词为空，需要顺序扫描，否则进一步优化
+    auto predicate = seq_scan_plan.filter_predicate_;
+    if (predicate != nullptr) {  //如果谓词为空，需要顺序扫描，否则进一步优化
       auto table_name = seq_scan_plan.table_name_;
       auto table_index = catalog_.GetTableIndexes(table_name);
       auto logic_expr = std::dynamic_pointer_cast<LogicExpression>(predicate);
-      if (!table_index.empty() && !logic_expr) {//没有索引或者有多个谓词条件，返回顺序扫描
+      if (!table_index.empty() && !logic_expr) {  //没有索引或者有多个谓词条件，返回顺序扫描
         auto equal_expr = std::dynamic_pointer_cast<ComparisonExpression>(predicate);
         // 需要判断是否是条件谓词
         if (equal_expr) {
@@ -37,7 +37,7 @@ auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &pl
             auto column_index = column_expr.GetColIdx();
             auto col_name = this->catalog_.GetTable(table_oid)->schema_.GetColumn(column_index).GetName();
             //存在相关索引，获取索引info
-            for (auto *index:table_index) {
+            for (auto *index : table_index) {
               const auto &columns = index->index_->GetKeyAttrs();
               std::vector<uint32_t> column_ids;
               column_ids.push_back(column_index);
@@ -46,7 +46,8 @@ auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &pl
                 auto pred_key = std::dynamic_pointer_cast<ConstantValueExpression>(equal_expr->GetChildAt(1));
                 //从智能指针获取裸指针
                 ConstantValueExpression *raw_pred_key = pred_key ? pred_key.get() : nullptr;
-                return std::make_shared<IndexScanPlanNode>(seq_scan_plan.output_schema_, table_oid, index->index_oid_,predicate,raw_pred_key);
+                return std::make_shared<IndexScanPlanNode>(seq_scan_plan.output_schema_, table_oid, index->index_oid_,
+                                                           predicate, raw_pred_key);
               }
             }
           }
