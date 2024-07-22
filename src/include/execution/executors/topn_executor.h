@@ -20,6 +20,7 @@
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/seq_scan_plan.h"
 #include "execution/plans/topn_plan.h"
+#include "sort_executor.h"
 #include "storage/table/tuple.h"
 
 namespace bustub {
@@ -63,5 +64,8 @@ class TopNExecutor : public AbstractExecutor {
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  std::unique_ptr<std::priority_queue<Tuple, std::vector<Tuple>, Comparator>> que_;
+  std::vector<Tuple> values_;
+  size_t heap_size_{0};
 };
 }  // namespace bustub
