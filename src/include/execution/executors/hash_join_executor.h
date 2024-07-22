@@ -20,9 +20,8 @@
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
 
-
 namespace bustub {
-  // copy from aggregate
+// copy from aggregate
 /** AggregateKey represents a key in an aggregation operation */
 struct HashJoinKey {
   /** The group-by values */
@@ -40,36 +39,20 @@ struct HashJoinKey {
     }
     return true;
   }
-  HashJoinKey() {
-    group_bys_.clear();
-  }
-  HashJoinKey(const Value & value) {
-    group_bys_.push_back(value);
-  }
-  void AddKey(const Value & value) {
-    group_bys_.push_back(value);
-  }
-  auto GetVector()->std::vector<Value> * {
-    return &group_bys_;
-  }
+  HashJoinKey() { group_bys_.clear(); }
+  explicit HashJoinKey(const Value &value) { group_bys_.push_back(value); }
+  void AddKey(const Value &value) { group_bys_.push_back(value); }
+  auto GetVector() -> std::vector<Value> * { return &group_bys_; }
 };
 // copy from aggregate
 /** AggregateValue represents a value for each of the running aggregates */
 struct HashJoinValue {
   /** The aggregate values */
   std::vector<Tuple> hashjoins_;
-  HashJoinValue() {
-    hashjoins_.clear();
-  }
-  HashJoinValue(const Tuple &tuple) {
-    hashjoins_.push_back(tuple);
-  }
-  void AddTuple(const Tuple &tuple) {
-    hashjoins_.push_back(tuple);
-  }
-  auto GetVector() -> std::vector<Tuple>* {
-    return &hashjoins_;
-  }
+  HashJoinValue() { hashjoins_.clear(); }
+  explicit HashJoinValue(const Tuple &tuple) { hashjoins_.push_back(tuple); }
+  void AddTuple(const Tuple &tuple) { hashjoins_.push_back(tuple); }
+  auto GetVector() -> std::vector<Tuple> * { return &hashjoins_; }
 };
 }  // namespace bustub
 
@@ -93,31 +76,26 @@ struct hash<bustub::HashJoinKey> {
 
 namespace bustub {
 
-
-
 class SimpleHashJoinHashTable {
-  public:
-    void InsertKey(const HashJoinKey &key, const Tuple &tuple) {
-      if (htable_.count(key) == 0) {
-        htable_.insert({key, HashJoinValue(tuple)});
-      } else {
-        htable_.at(key).AddTuple(tuple);
-      }
+ public:
+  void InsertKey(const HashJoinKey &key, const Tuple &tuple) {
+    if (htable_.count(key) == 0) {
+      htable_.insert({key, HashJoinValue(tuple)});
+    } else {
+      htable_.at(key).AddTuple(tuple);
     }
-    auto GetValue(const HashJoinKey &key) -> std::vector<Tuple> * {
-      if (htable_.find(key) == htable_.end()) {
-        return nullptr;
-      }
-      return htable_.at(key).GetVector();
+  }
+  auto GetValue(const HashJoinKey &key) -> std::vector<Tuple> * {
+    if (htable_.find(key) == htable_.end()) {
+      return nullptr;
     }
-    void Clear() {
-      htable_.clear();
-    }
-  private:
-    std::unordered_map<HashJoinKey, HashJoinValue> htable_;
+    return htable_.at(key).GetVector();
+  }
+  void Clear() { htable_.clear(); }
+
+ private:
+  std::unordered_map<HashJoinKey, HashJoinValue> htable_;
 };
-
-
 
 /**
  * HashJoinExecutor executes a nested-loop JOIN on two tables.
@@ -149,8 +127,8 @@ class HashJoinExecutor : public AbstractExecutor {
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
  private:
-  auto GetLeftJoinKey(const Tuple *tuple)-> HashJoinKey;
-  auto GetRightJoinKey(const Tuple *tuple)->HashJoinKey;
+  auto GetLeftJoinKey(const Tuple *tuple) -> HashJoinKey;
+  auto GetRightJoinKey(const Tuple *tuple) -> HashJoinKey;
   /** The HashJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
   std::unique_ptr<AbstractExecutor> left_child_;
@@ -163,7 +141,7 @@ class HashJoinExecutor : public AbstractExecutor {
   std::unique_ptr<SimpleHashJoinHashTable> jht_;
   bool if_hashjoined_{false};
   bool left_bool_{false};
-  std::vector<Tuple>* right_tuple_vector_{nullptr};
+  std::vector<Tuple> *right_tuple_vector_{nullptr};
   std::vector<Tuple>::iterator iter_;
 };
 
