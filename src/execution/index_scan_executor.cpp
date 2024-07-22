@@ -23,13 +23,8 @@ IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanP
   htable_ = dynamic_cast<HashTableIndexForTwoIntegerColumn *>(index_info_->index_.get());
 }
 
-void IndexScanExecutor::Init() {}
-
-auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  if (is_scaned_) {
-    return false;
-  }
-  is_scaned_ = true;
+// init里的东西不能随便挪到next中。原因和执行器的执行方式有关系。
+void IndexScanExecutor::Init() {
   auto table_schema = index_info_->key_schema_;
   auto key = plan_->pred_key_;
   auto value = key->val_;
@@ -37,6 +32,15 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   Tuple index_key(values, &table_schema);
   result_rid_.clear();
   htable_->ScanKey(index_key, &result_rid_, exec_ctx_->GetTransaction());
+  is_scaned_ = false;
+}
+
+auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  if (is_scaned_) {
+    return false;
+  }
+  is_scaned_ = true;
+
   if (result_rid_.empty()) {
     return false;
   }
