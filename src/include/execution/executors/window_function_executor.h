@@ -21,6 +21,122 @@
 #include "storage/table/tuple.h"
 
 namespace bustub {
+  
+  // window需要一个hashtable，直接仿写aggregate的htable
+  class SimpleWindowHashTable {
+    public:
+      explicit SimpleWindowHashTable(const WindowFunctionType &window_function_type): window_function_type_(window_function_type) {}
+
+       /** @return The initial aggregate value for this aggregation executor */
+  auto GenerateInitialWindowAggregateValue() -> Value {
+    Value value;
+      switch (window_function_type_) {
+        case WindowFunctionType::CountStarAggregate:
+          // Count start starts at zero.
+          return ValueFactory::GetIntegerValue(0);
+        case WindowFunctionType::CountAggregate:
+        case WindowFunctionType::SumAggregate:
+        case WindowFunctionType::MinAggregate:
+        case WindowFunctionType::MaxAggregate:
+        case WindowFunctionType::Rank:// 注意windowfunctiontype多一个Rank类型
+          // Others starts at null.
+          return ValueFactory::GetNullValueByType(TypeId::INTEGER);
+    }
+    return {};
+  }
+
+ /**
+   * TODO(Student)
+   *
+   * Combines the input into the aggregation result.
+   * @param[out] result The output aggregate value
+   * @param input The input value
+   */
+  auto CombineWindowAggregateValues(Value *result, const Value &input)->Value {
+      Value &old_val = *result;
+      const Value &new_val = input;
+      switch (window_function_type_) {
+        //无论value是否为null，都要统计数目
+        case WindowFunctionType::CountStarAggregate:
+          old_val = old_val.Add(Value(TypeId::INTEGER, 1));
+          break;
+        case WindowFunctionType::CountAggregate:
+          if (!new_val.IsNull()) {
+            if (old_val.IsNull()) {
+              old_val = ValueFactory::GetIntegerValue(0);
+            }
+            old_val = old_val.Add(Value(TypeId::INTEGER, 1));
+          }
+          break;
+        case WindowFunctionType::SumAggregate:
+          if (!new_val.IsNull()) {
+            if (old_val.IsNull()) {
+              old_val = new_val;
+            } else {
+              old_val = old_val.Add(new_val);
+            }
+          }
+          break;
+        case WindowFunctionType::MinAggregate:
+          if (!new_val.IsNull()) {
+            if (old_val.IsNull()) {
+              old_val = new_val;
+            } else {
+              old_val = old_val.Min(new_val);
+              // old_val = old_val.CompareLessThan(new_val) == CmpBool::CmpTrue ? old_val : new_val.Copy();
+            }
+          }
+          break;
+        case WindowFunctionType::MaxAggregate:
+          if (!new_val.IsNull()) {
+            if (old_val.IsNull()) {
+              old_val = new_val;
+            } else {
+              old_val = old_val.Max(new_val);
+              // old_val = old_val.CompareGreaterThan(new_val) == CmpBool::CmpTrue ? old_val : new_val.Copy();
+            }
+          }
+          break;
+        case WindowFunctionType::Rank:
+          ++rank_count_;
+          if (old_val.CompareEquals(new_val) != CmpBool::CmpTrue) {
+            old_val = new_val;
+            last_rank_count_= rank_count_;
+          }
+          return ValueFactory::GetIntegerValue(last_rank_count_);
+     }
+     return old_val;
+  }
+
+  /**
+   * Inserts a value into the hash table and then combines it with the current aggregation.
+   * @param agg_key the key to be inserted
+   * @param agg_val the value to be inserted
+   */
+  auto WindowInsertCombine(const AggregateKey &key, const Value &val)->Value {
+    if (htable_.count(key) == 0) {
+      htable_.insert({key, GenerateInitialWindowAggregateValue()});
+    }
+    return CombineWindowAggregateValues(&htable_[key], val);
+  }
+
+//省略iter，直接用unordermap自带的搜索
+  auto Find(const AggregateKey &key) -> Value {
+    return htable_.find(key)->second;
+  }
+
+  void Clear() {
+    htable_.clear();
+  }
+
+    private:
+      const WindowFunctionType window_function_type_;
+      std::unordered_map<AggregateKey, Value> htable_;
+      uint32_t rank_count_ = 0;
+      uint32_t last_rank_count_ = 0;
+  };
+
+
 
 /**
  * The WindowFunctionExecutor executor executes a window function for columns using window function.
@@ -90,5 +206,8 @@ class WindowFunctionExecutor : public AbstractExecutor {
 
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+
+  std::vector<SimpleWindowHashTable> window_hash_table_;
+  std::deque<std::vector<Value>> tuples_;
 };
 }  // namespace bustub
