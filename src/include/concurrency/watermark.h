@@ -33,8 +33,8 @@ class Watermark {
   timestamp_t commit_ts_;
 
   timestamp_t watermark_;
-  std::set<timestamp_t> current_reads_;
-  // std::unordered_map<timestamp_t, int> current_reads_;
+  std::set<timestamp_t> current_reads_set_;
+  std::unordered_map<timestamp_t, int> current_reads_;
 };
 
 };  // namespace bustub

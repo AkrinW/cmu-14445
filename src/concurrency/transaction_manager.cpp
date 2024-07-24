@@ -55,8 +55,8 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   std::unique_lock<std::mutex> commit_lck(commit_mutex_);
 
   // TODO(fall2023): acquire commit ts!
-  txn->commit_ts_ = last_commit_ts_.fetch_add(1) + 1;
-
+  txn->commit_ts_ = last_commit_ts_ + 1;
+  ++last_commit_ts_;
   if (txn->state_ != TransactionState::RUNNING) {
     throw Exception("txn not in running state");
   }
@@ -78,7 +78,6 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   txn->state_ = TransactionState::COMMITTED;
   running_txns_.UpdateCommitTs(txn->commit_ts_);
   running_txns_.RemoveTxn(txn->read_ts_);
-
   return true;
 }
 
