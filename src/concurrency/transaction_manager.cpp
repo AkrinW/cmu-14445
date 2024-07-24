@@ -44,7 +44,7 @@ auto TransactionManager::Begin(IsolationLevel isolation_level) -> Transaction * 
 
   // TODO(fall2023): set the timestamps here. Watermark updated below.
   txn_ref->read_ts_ = last_commit_ts_.load();
-  
+
   running_txns_.AddTxn(txn_ref->read_ts_);
   return txn_ref;
 }
