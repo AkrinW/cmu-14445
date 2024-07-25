@@ -85,6 +85,7 @@ class Value {
   // Access the raw variable length data
   inline auto GetData() const -> const char * { return Type::GetInstance(type_id_)->GetData(*this); }
 
+  //获取value中存储的数据value_,转换成对应的数据格式
   template <class T>
   inline auto GetAs() const -> T {
     return *reinterpret_cast<const T *>(&value_);
