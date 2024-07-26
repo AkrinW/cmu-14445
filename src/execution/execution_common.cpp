@@ -63,6 +63,7 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
     for (auto q: prev) {
       std::cout << " SLOT: " << q.first << ' ';
       auto pair = table_heap->GetTuple(RID(p.first,q.first));
+      std::cout << "tsfrom tableheap: " << table_heap->GetTupleMeta(RID(p.first,q.first)).ts_ << '\n';
       auto prev_txn_ = q.second.prev_.prev_txn_;
       auto log_idx = q.second.prev_.prev_log_idx_;
       auto txn = txn_mgr->txn_map_[prev_txn_];
@@ -131,5 +132,28 @@ auto GetUndoLogSchema(const Schema *schema, const UndoLog &undo_log) -> bustub::
   }
   return Schema::CopySchema(schema, attrs);
 }
+
+auto CreateUndolog(const RID &rid, const timestamp_t &read_time, const TransactionManager *txn_mgr)->std::vector<UndoLog> {
+  std::vector<UndoLog> undologs{};
+  auto page = rid.GetPageId();
+  auto slot = rid.GetSlotNum();
+  if (txn_mgr->version_info_.find(page) == txn_mgr->version_info_.end()) {
+    return undologs;
+  }
+  auto pageversion = txn_mgr->version_info_.at(page)->prev_version_;
+  if (pageversion.find(slot) == pageversion.end()) {
+    return undologs;
+  }
+  auto undo_link = pageversion.at(slot).prev_;
+  while (undo_link.IsValid()) {
+    auto txn_id = undo_link.prev_txn_;
+    auto logindex = undo_link.prev_log_idx_;
+    auto txn = txn_mgr->txn_map_.at(txn_id).get();
+    auto undolog = txn->GetUndoLog(logindex);
+    if (undolog.ts_)
+  }
+  return undologs;
+}
+
 
 }  // namespace bustub

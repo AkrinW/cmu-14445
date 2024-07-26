@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "execution/executors/seq_scan_executor.h"
-
+#include "execution/execution_common.h"
 namespace bustub {
 
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
@@ -24,9 +24,33 @@ void SeqScanExecutor::Init() {
   auto table_info = catalog->GetTable(table_oid);
   auto &table = table_info->table_;
   iter_ = std::make_unique<TableIterator>(table->MakeIterator());
+  cur_ts_rd_ = exec_ctx_->GetTransaction()->GetReadTs();
+  cur_ts_txn_ = exec_ctx_->GetTransaction()->GetTransactionId();
+  cur_schema_ = table_info->schema_;
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  //in project4
+  if (iter_->IsEnd()) {
+    return false;
+  }
+  // TupleMeta meta{cur_ts_, false};
+  while (true) {
+    if (iter_->IsEnd()) {
+      return false;
+    }
+    auto pair = iter_->GetTuple();
+    auto tuple_time = pair.first.ts_;
+    *rid = pair.second.GetRid();
+    if (tuple_time == cur_ts_txn_ || tuple_time <= cur_ts_rd_) {
+      *tuple = pair.second;
+    } else {
+      // 需要当前版本对txn不可见，需要寻找历史版本
+      auto undologs = CreateUndolog(*rid, cur_ts_rd_, exec_ctx_->GetTransactionManager());
+    }
+    ++*iter_;
+  }
+  //in project3
   if (iter_->IsEnd()) {
     return false;
   }
