@@ -53,11 +53,57 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
                TableHeap *table_heap) {
   // always use stderr for printing logs...
   fmt::println(stderr, "debug_hook: {}", info);
-
-  fmt::println(
-      stderr,
-      "You see this line of text because you have not implemented `TxnMgrDbg`. You should do this once you have "
-      "finished task 2. Implementing this helper function will save you a lot of time for debugging in later tasks.");
+  for (auto p: txn_mgr->txn_map_) {
+    std::cout << p.first  << ' '<< p.second->GetTransactionIdHumanReadable() << '\n';
+    std::cout << "readts: " << p.second->GetReadTs() << " committs: " << p.second->GetCommitTs() << '\n';
+  }
+  for (auto p: txn_mgr->version_info_) {
+    std::cout << "RID:" << p.first << '\n';
+    auto prev = p.second->prev_version_;
+    for (auto q: prev) {
+      std::cout << " SLOT: " << q.first << ' ';
+      auto pair = table_heap->GetTuple(RID(p.first,q.first));
+      auto prev_txn_ = q.second.prev_.prev_txn_;
+      auto log_idx = q.second.prev_.prev_log_idx_;
+      auto txn = txn_mgr->txn_map_[prev_txn_];
+      if (txn->GetCommitTs() != -1) {
+        std::cout << "commit_ts: " << txn->GetCommitTs() << ' ';
+      } else {
+        std::cout << "commit_ts: txn" << txn->GetTransactionIdHumanReadable() << ' ';
+      }
+      if (pair.first.is_deleted_) {
+        std::cout << "<is_deleted>  ";
+      }
+      std::cout << pair.second.ToString(&table_info->schema_) << '\n';
+      std::cout << "  txn: " << txn->GetTransactionIdHumanReadable() << " txnidx: " << log_idx << ' ';
+      auto undolog = txn->GetUndoLog(log_idx);
+      std::cout << "tstamp: " << undolog.ts_ << ' ';
+      if (undolog.is_deleted_) {
+        std::cout << "<is_deleted>  ";
+      }
+      auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
+      std::cout << undolog.tuple_.ToString(&schema) << '\n';
+      while (undolog.prev_version_.IsValid()) {
+        prev_txn_ = undolog.prev_version_.prev_txn_;
+        log_idx = undolog.prev_version_.prev_log_idx_;
+        txn = txn_mgr->txn_map_[prev_txn_];
+        std::cout << "  txn: " << txn->GetTransactionIdHumanReadable() << " txnidx: " << log_idx << ' ';
+        undolog = txn->GetUndoLog(log_idx);
+        std::cout << "tstamp: " << undolog.ts_ << ' ';
+        if (undolog.is_deleted_) {
+          std::cout << "<is_deleted>  ";
+        }
+        auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
+        std::cout << undolog.tuple_.ToString(&schema) << '\n';
+      }
+      // std::cout << "txn: " << undolog.prev_version_.prev_txn_ << " txnidx: " << undolog.prev_version_.prev_log_idx_ << '\n';
+      // std::cout << "txn: " << q.second.prev_.prev_txn_ << " txnidx: " << q.second.prev_.prev_log_idx_ <<'\n';
+    }
+  }
+  // fmt::println(
+  //     stderr,
+  //     "You see this line of text because you have not implemented `TxnMgrDbg`. You should do this once you have "
+  //     "finished task 2. Implementing this helper function will save you a lot of time for debugging in later tasks.");
 
   // We recommend implementing this function as traversing the table heap and print the version chain. An example output
   // of our reference solution:
