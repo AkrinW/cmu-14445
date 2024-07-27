@@ -135,36 +135,39 @@ auto GetUndoLogSchema(const Schema *schema, const UndoLog &undo_log) -> bustub::
   return Schema::CopySchema(schema, attrs);
 }
 
-auto CreateUndolog(const RID &rid, const timestamp_t &read_time, const TransactionManager *txn_mgr)
-    -> std::vector<UndoLog> {
+void CreateUndolog(const RID &rid, const timestamp_t &read_time, TransactionManager *txn_mgr, std::vector<UndoLog> &undologs) {
   // 需要构造一个恰好最后一个ts <= read_time的undolog，如果不存在，就返回空vector
-  std::vector<UndoLog> undologs{};
-  auto page = rid.GetPageId();
-  auto slot = rid.GetSlotNum();
-  if (txn_mgr->version_info_.find(page) == txn_mgr->version_info_.end()) {
-    return undologs;
+  // std::vector<UndoLog> undologs{};
+  // auto page = rid.GetPageId();
+  // auto slot = rid.GetSlotNum();
+  // if (txn_mgr->version_info_.find(page) == txn_mgr->version_info_.end()) {
+  //   return undologs;
+  // }
+  // auto pageversion = txn_mgr->version_info_.at(page)->prev_version_;
+  // if (pageversion.find(slot) == pageversion.end()) {
+  //   return undologs;
+  // }
+  auto undo_link_op = txn_mgr->GetUndoLink(rid);
+  if (!undo_link_op.has_value()) {
+    return;
   }
-  auto pageversion = txn_mgr->version_info_.at(page)->prev_version_;
-  if (pageversion.find(slot) == pageversion.end()) {
-    return undologs;
-  }
-  auto undo_link = pageversion.at(slot).prev_;
+  auto undo_link = undo_link_op.value();
   while (undo_link.IsValid()) {
-    auto txn_id = undo_link.prev_txn_;
-    auto logindex = undo_link.prev_log_idx_;
-    auto txn = txn_mgr->txn_map_.at(txn_id).get();
-    auto undolog = txn->GetUndoLog(logindex);
-    undologs.push_back(undolog);
-    if (undolog.ts_ <= read_time) {
+    // auto txn_id = undo_link->prev_txn_;
+    // auto logindex = undo_link->prev_log_idx_;
+    // auto txn = txn_mgr->txn_map_.at(txn_id).get();
+    // auto undolog = txn->GetUndoLog(logindex);
+    auto undolog = txn_mgr->GetUndoLogOptional(undo_link);
+    undologs.push_back(undolog.value());
+    if (undolog->ts_ <= read_time) {
       break;
     }
-    undo_link = undolog.prev_version_;
+    undo_link = undolog->prev_version_;
   }
   // 检查循环结束的情况
   if (!undologs.empty() && undologs.back().ts_ > read_time) {
     undologs.clear();
   }
-  return undologs;
 }
 
 }  // namespace bustub

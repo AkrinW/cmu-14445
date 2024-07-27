@@ -18,8 +18,7 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
 
 auto GetUndoLogSchema(const Schema *schema, const UndoLog &undo_log) -> Schema;
 
-auto CreateUndolog(const RID &rid, const timestamp_t &read_time, const TransactionManager *txn_mgr)
-    -> std::vector<UndoLog>;
+void CreateUndolog(const RID &rid, const timestamp_t &read_time, TransactionManager *txn_mgr, std::vector<UndoLog> &undologs);
 // Add new functions as needed... You are likely need to define some more functions.
 //
 // To give you a sense of what can be shared across executors / transaction manager, here are the

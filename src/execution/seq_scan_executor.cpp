@@ -61,7 +61,8 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       }
     } else {
       // 需要当前版本对txn不可见，需要寻找历史版本
-      auto undologs = CreateUndolog(*rid, cur_ts_rd_, exec_ctx_->GetTransactionManager());
+      std::vector<UndoLog> undologs{};
+      CreateUndolog(*rid, cur_ts_rd_, exec_ctx_->GetTransactionManager(), undologs);
       // 无法构建，跳过tuple
       if (undologs.empty()) {
         continue;
