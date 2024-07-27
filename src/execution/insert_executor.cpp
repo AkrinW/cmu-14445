@@ -13,7 +13,7 @@
 #include <memory>
 
 #include "execution/executors/insert_executor.h"
-
+#include "concurrency/transaction_manager.h"
 namespace bustub {
 
 InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
@@ -35,33 +35,64 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   //   auto table_index = catalog->GetIndex(table_oid);
   auto table_indexes = catalog->GetTableIndexes(table_name);
 
+  // project 4
+  auto *txn_mgr = exec_ctx_->GetTransactionManager();
+  auto *txn = exec_ctx_->GetTransaction();
+
   if (is_done_) {
     return false;
   }
   int row_num = 0;
-  TupleMeta meta = {INVALID_TXN_ID, false};
-
-  //   auto table_index = exec_ctx_->GetCatalog()->GetTableIndexes(table_info->name_);
-
-  while (child_executor_->Next(tuple, rid)) {
-    // try: insert (tuple from child) to table
+  TupleMeta meta = {txn->GetTransactionTempTs(),false};
+  while (child_executor_->Next(tuple,rid)) {
+    // try: insert tuple from child to table
     auto new_tuple_rid = table_info->table_->InsertTuple(meta, *tuple);
     if (!new_tuple_rid.has_value()) {
       break;
     }
     *rid = new_tuple_rid.value();
-    // try: insert (index of this tuple) to (b_plus_index_tree of table)
-    for (auto &index : table_indexes) {
+    // insert to index
+    for (auto &index: table_indexes) {
       auto key = tuple->KeyFromTuple(table_schema, index->key_schema_, index->index_->GetKeyAttrs());
       index->index_->InsertEntry(key, *rid, exec_ctx_->GetTransaction());
     }
-    // iteration
     ++row_num;
+    // 需要更新txn的write_set与txn_mgr的version_info。
+    txn_mgr->UpdateUndoLink(*rid, std::nullopt);
+    txn->AppendWriteSet(table_oid, *rid);
   }
-
   is_done_ = true;
   std::vector<Value> result = {{TypeId::INTEGER, row_num}};
   *tuple = Tuple(result, &GetOutputSchema());
   return true;
+  // // project3
+  // if (is_done_) {
+  //   return false;
+  // }
+  // int row_num = 0;
+  // TupleMeta meta = {INVALID_TXN_ID, false};
+
+  // //   auto table_index = exec_ctx_->GetCatalog()->GetTableIndexes(table_info->name_);
+
+  // while (child_executor_->Next(tuple, rid)) {
+  //   // try: insert (tuple from child) to table
+  //   auto new_tuple_rid = table_info->table_->InsertTuple(meta, *tuple);
+  //   if (!new_tuple_rid.has_value()) {
+  //     break;
+  //   }
+  //   *rid = new_tuple_rid.value();
+  //   // try: insert (index of this tuple) to (b_plus_index_tree of table)
+  //   for (auto &index : table_indexes) {
+  //     auto key = tuple->KeyFromTuple(table_schema, index->key_schema_, index->index_->GetKeyAttrs());
+  //     index->index_->InsertEntry(key, *rid, exec_ctx_->GetTransaction());
+  //   }
+  //   // iteration
+  //   ++row_num;
+  // }
+
+  // is_done_ = true;
+  // std::vector<Value> result = {{TypeId::INTEGER, row_num}};
+  // *tuple = Tuple(result, &GetOutputSchema());
+  // return true;
 }
 }  // namespace bustub
