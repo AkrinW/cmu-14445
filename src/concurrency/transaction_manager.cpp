@@ -56,7 +56,8 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
 
   // TODO(fall2023): acquire commit ts!
   txn->commit_ts_ = last_commit_ts_ + 1;
-  ++last_commit_ts_;
+  // 需要在提交结束后再增加。
+  // ++last_commit_ts_;
   if (txn->state_ != TransactionState::RUNNING) {
     throw Exception("txn not in running state");
   }
@@ -72,12 +73,23 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   // TODO(fall2023): Implement the commit logic!
 
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
-
+  // 遍历txn的write_set_，修改每个tuple的ts为commit
+  auto write_set = txn->GetWriteSets();
+  for (auto p: write_set) {
+    auto table_oid = p.first;
+    auto table_info = catalog_->GetTable(table_oid);
+    for (auto rid: p.second) {
+      auto meta = table_info->table_->GetTupleMeta(rid);
+      TupleMeta new_meta{txn->GetCommitTs(),meta.is_deleted_};
+      table_info->table_->UpdateTupleMeta(new_meta, rid);
+    }
+  }
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
 
   txn->state_ = TransactionState::COMMITTED;
-  running_txns_.UpdateCommitTs(txn->commit_ts_);
-  running_txns_.RemoveTxn(txn->read_ts_);
+  ++last_commit_ts_;
+  running_txns_.UpdateCommitTs(txn->GetCommitTs());
+  running_txns_.RemoveTxn(txn->GetReadTs());
   return true;
 }
 
