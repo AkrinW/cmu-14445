@@ -170,4 +170,37 @@ void CreateUndolog(const RID &rid, const timestamp_t &read_time, TransactionMana
   }
 }
 
+auto IsWriteWriteConflict(const TableInfo *table_info, const RID &rid, const Transaction *txn)->bool {
+  auto tuple_ts = table_info->table_->GetTupleMeta(rid).ts_;
+  auto txn_id = txn->GetTransactionId();
+  auto txn_read_ts = txn->GetReadTs();
+  if (txn_id == tuple_ts) {
+    return false;
+  }
+  if (tuple_ts >= TXN_START_ID) {
+    return true;
+  }
+  if (tuple_ts > txn_read_ts) {
+    return true;
+  }
+  return false;
+}
+
+auto GenerateDeleteUndolog(const RID &rid, Tuple base_tuple,const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+  bool is_deleted = false;
+  std::vector<bool> modified_fields{};
+  auto size = table_info->schema_.GetColumnCount();
+  for (uint32_t i = 0; i < size; ++i) {
+    modified_fields.push_back(true);
+  }
+  auto timestamp = txn->GetTransactionTempTs();
+  auto undolink =  txn_mgr->GetUndoLink(rid);
+  if (undolink.has_value()) {
+    return UndoLog{is_deleted, modified_fields, base_tuple, timestamp, undolink.value()};
+  }
+  return UndoLog{is_deleted, modified_fields, base_tuple, timestamp};
+}
+
+
+
 }  // namespace bustub

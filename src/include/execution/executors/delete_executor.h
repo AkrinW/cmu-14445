@@ -63,5 +63,10 @@ class DeleteExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   bool is_deleted_{false};
+  std::vector<RID> child_rids_{};
+  int count_{0};
+  TableInfo *table_info_;
+  Transaction *cur_txn_;
+  TransactionManager *txn_mgr_;
 };
 }  // namespace bustub
