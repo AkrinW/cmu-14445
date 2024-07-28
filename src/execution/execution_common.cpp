@@ -54,7 +54,7 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
   // always use stderr for printing logs...
   fmt::println(stderr, "debug_hook: {}", info);
   for (const auto &p : txn_mgr->txn_map_) {
-    std::cout << p.first << ' ' << p.second->GetTransactionIdHumanReadable() << '\n';
+    std::cout << p.first << " 100" << p.second->GetTransactionIdHumanReadable() << '\n';
     std::cout << "readts: " << p.second->GetReadTs() << " committs: " << p.second->GetCommitTs() << '\n';
   }
   for (const auto &p : txn_mgr->version_info_) {
@@ -63,14 +63,19 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
     for (auto q : prev) {
       std::cout << " SLOT: " << q.first << ' ';
       auto pair = table_heap->GetTuple(RID(p.first, q.first));
-      std::cout << "tsfrom tableheap: " << table_heap->GetTupleMeta(RID(p.first, q.first)).ts_ << '\n';
+      auto ts = table_heap->GetTupleMeta(RID(p.first, q.first)).ts_;
+      if (ts > 100000) {
+        ts = ts & UINT32_MAX;
+        ts += 1000;
+      }
+      std::cout << "tsfrom tableheap: " << ts << '\n';
       auto prev_txn = q.second.prev_.prev_txn_;
       auto log_idx = q.second.prev_.prev_log_idx_;
       auto txn = txn_mgr->txn_map_[prev_txn];
       if (txn->GetCommitTs() != -1) {
-        std::cout << "commit_ts: " << txn->GetCommitTs() << ' ';
+        std::cout << "\tcommit_ts: " << txn->GetCommitTs() << ' ';
       } else {
-        std::cout << "commit_ts: txn" << txn->GetTransactionIdHumanReadable() << ' ';
+        std::cout << "\tcommit_ts: txn" << txn->GetTransactionIdHumanReadable() << ' ';
       }
       if (pair.first.is_deleted_) {
         std::cout << "<is_deleted>  ";
@@ -97,6 +102,7 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
         auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
         std::cout << undolog.tuple_.ToString(&schema) << '\n';
       }
+      std::cout << '\n';
       // std::cout << "txn: " << undolog.prev_version_.prev_txn_ << " txnidx: " << undolog.prev_version_.prev_log_idx_
       // << '\n'; std::cout << "txn: " << q.second.prev_.prev_txn_ << " txnidx: " << q.second.prev_.prev_log_idx_
       // <<'\n';
@@ -186,19 +192,23 @@ auto IsWriteWriteConflict(const TableInfo *table_info, const RID &rid, const Tra
   return false;
 }
 
-auto GenerateDeleteUndolog(const RID &rid, Tuple base_tuple,const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts,Tuple base_tuple,const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
   bool is_deleted = false;
   std::vector<bool> modified_fields{};
   auto size = table_info->schema_.GetColumnCount();
   for (uint32_t i = 0; i < size; ++i) {
     modified_fields.push_back(true);
   }
-  auto timestamp = txn->GetTransactionTempTs();
+  // timestamp错了，应该用数字小的read_ts_
+  // auto timestamp = txn->GetTransactionTempTs();
+  // ts还是不对，生成的应该是原本tuple带的ts，如果是uncommit的tuple(同个txn修改，把它变成read_ts形式)
+  // auto timestamp = txn->GetReadTs();
+  // 还要考虑同个txn恢复的情况，传表的tuplemeta也不对。直接把正确的ts做参数传入。
   auto undolink =  txn_mgr->GetUndoLink(rid);
   if (undolink.has_value()) {
-    return UndoLog{is_deleted, modified_fields, base_tuple, timestamp, undolink.value()};
+    return UndoLog{is_deleted, modified_fields, base_tuple, ts, undolink.value()};
   }
-  return UndoLog{is_deleted, modified_fields, base_tuple, timestamp};
+  return UndoLog{is_deleted, modified_fields, base_tuple, ts};
 }
 
 

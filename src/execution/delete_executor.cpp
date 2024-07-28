@@ -45,15 +45,28 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   // 执行删除操作。
   for (auto &child_rid: child_rids_) {
     auto old_meta = table_info_->table_->GetTupleMeta(child_rid);
-    auto old_tuple = table_info_->table_->GetTuple(child_rid);
+    auto old_tuple = table_info_->table_->GetTuple(child_rid).second;
     if (old_meta.ts_ != cur_txn_->GetTransactionTempTs()) {
       // 前一次更改是不同的txn
       // 把当前tuple作为undolog，添加到txnmgr和curtxn里。
-      auto undolog = GenerateDeleteUndolog(child_rid, old_tuple.second, table_info_, cur_txn_, txn_mgr_);
+      auto undolog = GenerateDeleteUndolog(child_rid, old_meta.ts_, old_tuple, table_info_, cur_txn_, txn_mgr_);
       auto undolink = cur_txn_->AppendUndoLog(undolog);
       txn_mgr_->UpdateUndoLink(child_rid,std::make_optional<UndoLink>(undolink));
     } else {
       // todo 是同一个txn的情况
+      // 先从undolog里恢复到上一个版本，再进行删除。
+      auto first_undolink = txn_mgr_->GetUndoLink(child_rid);
+      if (first_undolink.has_value()) {
+        // 有上一个版本，获取后重构
+        std::vector<UndoLog> undologs{txn_mgr_->GetUndoLog(first_undolink.value())};
+        auto new_tuple = ReconstructTuple(&table_info_->schema_, old_tuple, old_meta, undologs);
+        auto undolog = GenerateDeleteUndolog(child_rid, undologs[0].ts_,new_tuple.value(), table_info_, cur_txn_, txn_mgr_);
+        // 直接修改上一个UndoLog的信息，不需要进行增删
+        cur_txn_->ModifyUndoLog(first_undolink.value().prev_txn_,undolog);
+      } else {
+        // 不存在上一个版本，是新插入的情况。
+        //  什么都不需要做，直接跳出更新
+      }
     }
     cur_txn_->AppendWriteSet(table_info_->oid_,child_rid);
     table_info_->table_->UpdateTupleMeta(TupleMeta{cur_txn_->GetTransactionTempTs(), true},child_rid);
