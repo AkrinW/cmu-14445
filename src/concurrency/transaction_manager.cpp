@@ -75,12 +75,12 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
   // 遍历txn的write_set_，修改每个tuple的ts为commit
   auto write_set = txn->GetWriteSets();
-  for (auto p: write_set) {
+  for (const auto &p : write_set) {
     auto table_oid = p.first;
     auto table_info = catalog_->GetTable(table_oid);
-    for (auto rid: p.second) {
+    for (auto rid : p.second) {
       auto meta = table_info->table_->GetTupleMeta(rid);
-      TupleMeta new_meta{txn->GetCommitTs(),meta.is_deleted_};
+      TupleMeta new_meta{txn->GetCommitTs(), meta.is_deleted_};
       table_info->table_->UpdateTupleMeta(new_meta, rid);
     }
   }

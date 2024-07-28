@@ -141,7 +141,8 @@ auto GetUndoLogSchema(const Schema *schema, const UndoLog &undo_log) -> bustub::
   return Schema::CopySchema(schema, attrs);
 }
 
-void CreateUndolog(const RID &rid, const timestamp_t &read_time, TransactionManager *txn_mgr, std::vector<UndoLog> &undologs) {
+void CreateUndolog(const RID &rid, const timestamp_t &read_time, TransactionManager *txn_mgr,
+                   std::vector<UndoLog> &undologs) {
   // 需要构造一个恰好最后一个ts <= read_time的undolog，如果不存在，就返回空vector
   // std::vector<UndoLog> undologs{};
   // auto page = rid.GetPageId();
@@ -176,7 +177,7 @@ void CreateUndolog(const RID &rid, const timestamp_t &read_time, TransactionMana
   }
 }
 
-auto IsWriteWriteConflict(const TableInfo *table_info, const RID &rid, const Transaction *txn)->bool {
+auto IsWriteWriteConflict(const TableInfo *table_info, const RID &rid, const Transaction *txn) -> bool {
   auto tuple_ts = table_info->table_->GetTupleMeta(rid).ts_;
   auto txn_id = txn->GetTransactionId();
   auto txn_read_ts = txn->GetReadTs();
@@ -192,7 +193,8 @@ auto IsWriteWriteConflict(const TableInfo *table_info, const RID &rid, const Tra
   return false;
 }
 
-auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts,Tuple base_tuple,const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts, const Tuple &base_tuple, const TableInfo *table_info,
+                           Transaction *txn, TransactionManager *txn_mgr) -> UndoLog {
   bool is_deleted = false;
   std::vector<bool> modified_fields{};
   auto size = table_info->schema_.GetColumnCount();
@@ -204,13 +206,11 @@ auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts,Tuple base_tupl
   // ts还是不对，生成的应该是原本tuple带的ts，如果是uncommit的tuple(同个txn修改，把它变成read_ts形式)
   // auto timestamp = txn->GetReadTs();
   // 还要考虑同个txn恢复的情况，传表的tuplemeta也不对。直接把正确的ts做参数传入。
-  auto undolink =  txn_mgr->GetUndoLink(rid);
+  auto undolink = txn_mgr->GetUndoLink(rid);
   if (undolink.has_value()) {
     return UndoLog{is_deleted, modified_fields, base_tuple, ts, undolink.value()};
   }
   return UndoLog{is_deleted, modified_fields, base_tuple, ts};
 }
-
-
 
 }  // namespace bustub

@@ -12,8 +12,8 @@
 
 #include <memory>
 
-#include "execution/executors/insert_executor.h"
 #include "concurrency/transaction_manager.h"
+#include "execution/executors/insert_executor.h"
 namespace bustub {
 
 InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
@@ -43,8 +43,8 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     return false;
   }
   int row_num = 0;
-  TupleMeta meta = {txn->GetTransactionTempTs(),false};
-  while (child_executor_->Next(tuple,rid)) {
+  TupleMeta meta = {txn->GetTransactionTempTs(), false};
+  while (child_executor_->Next(tuple, rid)) {
     // try: insert tuple from child to table
     auto new_tuple_rid = table_info->table_->InsertTuple(meta, *tuple);
     if (!new_tuple_rid.has_value()) {
@@ -52,7 +52,7 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     }
     *rid = new_tuple_rid.value();
     // insert to index
-    for (auto &index: table_indexes) {
+    for (auto &index : table_indexes) {
       auto key = tuple->KeyFromTuple(table_schema, index->key_schema_, index->index_->GetKeyAttrs());
       index->index_->InsertEntry(key, *rid, exec_ctx_->GetTransaction());
     }
