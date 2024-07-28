@@ -33,6 +33,8 @@ void DeleteExecutor::Init() {
     child_rids_.push_back(child_rid);
     // 检查写写冲突。
     if (IsWriteWriteConflict(table_info_, child_rid, cur_txn_)) {
+      // 忘记把txn设置为tainted了
+      cur_txn_->SetTainted();
       throw ExecutionException("Exist writewrite conflict.");
     }
   }
