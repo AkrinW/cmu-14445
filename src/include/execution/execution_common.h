@@ -27,11 +27,12 @@ auto IsWriteWriteConflict(const TableInfo *table_info, const RID &rid, const Tra
 auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts, const Tuple &base_tuple, const TableInfo *table_info,
                            Transaction *txn, TransactionManager *txn_mgr) -> UndoLog;
 
-auto GenerateUpdateUndolog(const Tuple &new_tuple, const RID &rid, const TupleMeta &base_meta, const Tuple &base_tuple, const TableInfo *table_info,
-Transaction *txn, TransactionManager* txn_mgr) ->UndoLog;
+auto GenerateUpdateUndolog(const Tuple &new_tuple, const RID &rid, const TupleMeta &base_meta, const Tuple &base_tuple,
+                           const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr) -> UndoLog;
 
-auto IncrementalUpdateUndolog(const Tuple &new_tuple,const UndoLog &base_undolog,  const RID &rid, const TupleMeta &base_meta, const Tuple &base_tuple, const TableInfo *table_info,
-Transaction *txn, TransactionManager* txn_mgr) ->UndoLog;
+auto IncrementalUpdateUndolog(const Tuple &new_tuple, const UndoLog &base_undolog, const RID &rid,
+                              const TupleMeta &base_meta, const Tuple &base_tuple, const TableInfo *table_info,
+                              Transaction *txn, TransactionManager *txn_mgr) -> UndoLog;
 
 // Add new functions as needed... You are likely need to define some more functions.
 //

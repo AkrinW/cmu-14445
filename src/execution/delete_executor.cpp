@@ -67,8 +67,8 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
         auto new_tuple = ReconstructTuple(&table_info_->schema_, old_tuple, old_meta, undologs);
         auto undolog =
             GenerateDeleteUndolog(child_rid, undologs[0].ts_, new_tuple.value(), table_info_, cur_txn_, txn_mgr_);
-          // 有上一个版本的情况，undolink不能连接到自身
-          undolog.prev_version_ = undologs[0].prev_version_;
+        // 有上一个版本的情况，undolink不能连接到自身
+        undolog.prev_version_ = undologs[0].prev_version_;
         // 直接修改上一个UndoLog的信息，不需要进行增删
         cur_txn_->ModifyUndoLog(first_undolink.value().prev_log_idx_, undolog);
       } else {

@@ -215,8 +215,8 @@ auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts, const Tuple &b
   return UndoLog{is_deleted, modified_fields, base_tuple, ts};
 }
 
-auto GenerateUpdateUndolog(const Tuple &new_tuple, const RID &rid, const TupleMeta &base_meta, const Tuple &base_tuple, 
-const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+auto GenerateUpdateUndolog(const Tuple &new_tuple, const RID &rid, const TupleMeta &base_meta, const Tuple &base_tuple,
+                           const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr) -> UndoLog {
   // Undolog参考测试里的格式
   auto schema = table_info->schema_;
   auto column_count = schema.GetColumnCount();
@@ -235,9 +235,9 @@ const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->Und
   std::vector<uint32_t> attrs{};
   std::vector<Value> change_value{};
   for (uint32_t i = 0; i < table_info->schema_.GetColumnCount(); ++i) {
-    auto new_value = new_tuple.GetValue(&schema,i);
+    auto new_value = new_tuple.GetValue(&schema, i);
     auto old_value = base_tuple.GetValue(&schema, i);
-    
+
     if (!new_value.CompareExactlyEquals(old_value)) {
       modified_field.push_back(true);
       attrs.push_back(i);
@@ -254,8 +254,9 @@ const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->Und
   return UndoLog{false, modified_field, change_tuple, timestamp};
 }
 
-auto IncrementalUpdateUndolog(const Tuple &new_tuple, const UndoLog &base_undolog, const RID &rid, const TupleMeta &base_meta, 
-const Tuple &base_tuple, const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+auto IncrementalUpdateUndolog(const Tuple &new_tuple, const UndoLog &base_undolog, const RID &rid,
+                              const TupleMeta &base_meta, const Tuple &base_tuple, const TableInfo *table_info,
+                              Transaction *txn, TransactionManager *txn_mgr) -> UndoLog {
   // Undolog参考测试里的格式
   if (base_undolog.is_deleted_) {
     return base_undolog;
@@ -267,11 +268,11 @@ const Tuple &base_tuple, const TableInfo *table_info, Transaction *txn, Transact
   modified_field.reserve(column_count);
   auto undolink = base_undolog.prev_version_;
   // 对于undolog里的不完整tuple，还需要先构造出对应的schema才能继续。
-  auto undolog_schema =  GetUndoLogSchema(&schema, base_undolog);
+  auto undolog_schema = GetUndoLogSchema(&schema, base_undolog);
   // 重新构造一个新的schema和tuple
   std::vector<uint32_t> attrs{};
   std::vector<Value> change_value{};
-  uint32_t sub = 0; // sub用于遍历undolog里tuple的值
+  uint32_t sub = 0;  // sub用于遍历undolog里tuple的值
   for (uint32_t i = 0; i < column_count; ++i) {
     if (base_undolog.modified_fields_[i]) {
       // 原本的undolog就已经有值了。直接加入。
@@ -296,6 +297,5 @@ const Tuple &base_tuple, const TableInfo *table_info, Transaction *txn, Transact
   Tuple change_tuple{change_value, &change_schema};
   return UndoLog{false, modified_field, change_tuple, timestamp, undolink};
 }
-
 
 }  // namespace bustub
