@@ -75,7 +75,7 @@ auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     } else {
       // 相同txn情况。
       auto first_undolink = txn_mgr_->GetUndoLink(child_rid);
-      if (first_undolink.has_value()) {
+      if (first_undolink.has_value() && first_undolink.value().IsValid()) {
         // 有上一个版本，对undolog进行增量更新
         auto undolog = txn_mgr_->GetUndoLog(first_undolink.value());
         // 简单来说，undolog里保存的一定是最原始的版本，只需要比较modified_fields即可

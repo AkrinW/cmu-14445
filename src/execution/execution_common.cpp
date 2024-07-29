@@ -53,61 +53,112 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
                TableHeap *table_heap) {
   // always use stderr for printing logs...
   fmt::println(stderr, "debug_hook: {}", info);
+  std::unordered_set<RID> ridset;
   for (const auto &p : txn_mgr->txn_map_) {
     std::cout << p.first << " 100" << p.second->GetTransactionIdHumanReadable() << '\n';
     std::cout << "readts: " << p.second->GetReadTs() << " committs: " << p.second->GetCommitTs() << '\n';
+    const auto &write_sets = p.second->GetWriteSets();
+    auto it = write_sets.find(table_info->oid_);
+    if (it != write_sets.end()) {
+      const auto &set = it->second;
+      for (const auto &rid : set) {
+        ridset.emplace(rid);
+      }
+    }
   }
-  for (const auto &p : txn_mgr->version_info_) {
-    std::cout << "RID:" << p.first << '\n';
-    auto prev = p.second->prev_version_;
-    for (auto q : prev) {
-      std::cout << " SLOT: " << q.first << ' ';
-      auto pair = table_heap->GetTuple(RID(p.first, q.first));
-      auto ts = table_heap->GetTupleMeta(RID(p.first, q.first)).ts_;
-      if (ts > 100000) {
-        ts = ts & UINT32_MAX;
-        ts += 1000;
-      }
-      std::cout << "tsfrom tableheap: " << ts << '\n';
-      auto prev_txn = q.second.prev_.prev_txn_;
-      auto log_idx = q.second.prev_.prev_log_idx_;
+  // 修改一下mgrdbg的逻辑，不再从version_info获取时间信息。
+  // 这个打印只会打印version_info中有值的部分，考虑遍历table，打印所有的tuple
+  // 先从所有的txn中获取rid，作为map，然后对每个rid进行遍历
+  for (auto rid : ridset) {
+    std::cout << "RID:" << rid.GetPageId() << " SLOT:" << rid.GetSlotNum() << '\n';
+    auto pair = table_heap->GetTuple(rid);
+    auto ts = pair.first.ts_;
+    if (ts > 100000) {
+      ts = ts & UINT32_MAX;
+      ts += 1000;
+    }
+    std::cout << "  tsfrom tableheap: " << ts << ' ';
+    if (pair.first.is_deleted_) {
+      std::cout << "<is_deleted>  ";
+    }
+    std::cout << pair.second.ToString(&table_info->schema_) << " ↓undologs\n";
+    // 这一行代码有问题，会自动添加新元素，需要写安全的形式。
+    auto prev_version = txn_mgr->version_info_[rid.GetPageId()]->prev_version_;
+    UndoLink undolink;
+    if (prev_version.find(rid.GetSlotNum()) != prev_version.end()) {
+      undolink = prev_version.at(rid.GetSlotNum()).prev_;
+    } else {
+      continue;
+    }
+    // auto undolink = txn_mgr->version_info_[rid.GetPageId()]->prev_version_[rid.GetSlotNum()].prev_;
+    while (undolink.IsValid()) {
+      auto undolog = txn_mgr->GetUndoLog(undolink);
+      auto prev_txn = undolink.prev_txn_;
+      auto log_idx = undolink.prev_log_idx_;
       auto txn = txn_mgr->txn_map_[prev_txn];
-      if (txn->GetCommitTs() != -1) {
-        std::cout << "\tcommit_ts: " << txn->GetCommitTs() << ' ';
-      } else {
-        std::cout << "\tcommit_ts: txn" << txn->GetTransactionIdHumanReadable() << ' ';
-      }
-      if (pair.first.is_deleted_) {
-        std::cout << "<is_deleted>  ";
-      }
-      std::cout << pair.second.ToString(&table_info->schema_) << '\n';
       std::cout << "  txn: " << txn->GetTransactionIdHumanReadable() << " txnidx: " << log_idx << ' ';
-      auto undolog = txn->GetUndoLog(log_idx);
+      undolog = txn->GetUndoLog(log_idx);
       std::cout << "tstamp: " << undolog.ts_ << ' ';
       if (undolog.is_deleted_) {
         std::cout << "<is_deleted>  ";
       }
       auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
       std::cout << undolog.tuple_.ToString(&schema) << '\n';
-      while (undolog.prev_version_.IsValid()) {
-        prev_txn = undolog.prev_version_.prev_txn_;
-        log_idx = undolog.prev_version_.prev_log_idx_;
-        txn = txn_mgr->txn_map_[prev_txn];
-        std::cout << "  txn: " << txn->GetTransactionIdHumanReadable() << " txnidx: " << log_idx << ' ';
-        undolog = txn->GetUndoLog(log_idx);
-        std::cout << "tstamp: " << undolog.ts_ << ' ';
-        if (undolog.is_deleted_) {
-          std::cout << "<is_deleted>  ";
-        }
-        auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
-        std::cout << undolog.tuple_.ToString(&schema) << '\n';
-      }
-      std::cout << '\n';
-      // std::cout << "txn: " << undolog.prev_version_.prev_txn_ << " txnidx: " << undolog.prev_version_.prev_log_idx_
-      // << '\n'; std::cout << "txn: " << q.second.prev_.prev_txn_ << " txnidx: " << q.second.prev_.prev_log_idx_
-      // <<'\n';
+      undolink = undolog.prev_version_;
     }
   }
+  // for (const auto &p : txn_mgr->version_info_) {
+  //   std::cout << "RID:" << p.first << '\n';
+  //   auto prev = p.second->prev_version_;
+  //   for (auto q : prev) {
+  //     std::cout << " SLOT: " << q.first << ' ';
+  //     auto pair = table_heap->GetTuple(RID(p.first, q.first));
+  //     auto ts = table_heap->GetTupleMeta(RID(p.first, q.first)).ts_;
+  //     if (ts > 100000) {
+  //       ts = ts & UINT32_MAX;
+  //       ts += 1000;
+  //     }
+  //     std::cout << "tsfrom tableheap: " << ts << '\n';
+  //     auto prev_txn = q.second.prev_.prev_txn_;
+  //     auto log_idx = q.second.prev_.prev_log_idx_;
+  //     auto txn = txn_mgr->txn_map_[prev_txn];
+  //     if (txn->GetCommitTs() != -1) {
+  //       std::cout << "\tcommit_ts: " << txn->GetCommitTs() << ' ';
+  //     } else {
+  //       std::cout << "\tcommit_ts: txn" << txn->GetTransactionIdHumanReadable() << ' ';
+  //     }
+  //     if (pair.first.is_deleted_) {
+  //       std::cout << "<is_deleted>  ";
+  //     }
+  //     std::cout << pair.second.ToString(&table_info->schema_) << '\n';
+  //     std::cout << "  txn: " << txn->GetTransactionIdHumanReadable() << " txnidx: " << log_idx << ' ';
+  //     auto undolog = txn->GetUndoLog(log_idx);
+  //     std::cout << "tstamp: " << undolog.ts_ << ' ';
+  //     if (undolog.is_deleted_) {
+  //       std::cout << "<is_deleted>  ";
+  //     }
+  //     auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
+  //     std::cout << undolog.tuple_.ToString(&schema) << '\n';
+  //     while (undolog.prev_version_.IsValid()) {
+  //       prev_txn = undolog.prev_version_.prev_txn_;
+  //       log_idx = undolog.prev_version_.prev_log_idx_;
+  //       txn = txn_mgr->txn_map_[prev_txn];
+  //       std::cout << "  txn: " << txn->GetTransactionIdHumanReadable() << " txnidx: " << log_idx << ' ';
+  //       undolog = txn->GetUndoLog(log_idx);
+  //       std::cout << "tstamp: " << undolog.ts_ << ' ';
+  //       if (undolog.is_deleted_) {
+  //         std::cout << "<is_deleted>  ";
+  //       }
+  //       auto schema = GetUndoLogSchema(&table_info->schema_, undolog);
+  //       std::cout << undolog.tuple_.ToString(&schema) << '\n';
+  //     }
+  //     std::cout << '\n';
+  //     // std::cout << "txn: " << undolog.prev_version_.prev_txn_ << " txnidx: " <<
+  //     undolog.prev_version_.prev_log_idx_
+  //     // << '\n'; std::cout << "txn: " << q.second.prev_.prev_txn_ << " txnidx: " << q.second.prev_.prev_log_idx_
+  //     // <<'\n';
+  //   }
+  // }
   // fmt::println(
   //     stderr,
   //     "You see this line of text because you have not implemented `TxnMgrDbg`. You should do this once you have "
