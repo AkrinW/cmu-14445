@@ -54,6 +54,45 @@ auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   }
   // 执行更新操作。
   for (auto &child_rid : child_rids_) {
+    auto old_meta = table_info_->table_->GetTupleMeta(child_rid);
+    auto old_tuple = table_info_->table_->GetTuple(child_rid).second;
+    // 获取更新的tuple
+    std::vector<Value> new_values{};
+    new_values.reserve(plan_->target_expressions_.size());
+    for (const auto &expr : plan_->target_expressions_) {
+      new_values.push_back(expr->Evaluate(&old_tuple, child_executor_->GetOutputSchema()));
+    }
+    auto update_tuple = Tuple{new_values, &table_info_->schema_};
+    if (old_meta.ts_ != cur_txn_->GetTransactionTempTs()) {
+      // 前一次更改是不同的txn
+      // 直接进行更新。
+      // 应该对前tuple是delete的情况也进行修改。
+      // 直接把tuplemeta的信息全部加到undolog里，按要求，undolog里需要尽可能保留多的信息。
+      auto undolog = GenerateUpdateUndolog(update_tuple, child_rid, old_meta, old_tuple, table_info_, cur_txn_, txn_mgr_);
+      auto undolink = cur_txn_->AppendUndoLog(undolog);
+      txn_mgr_->UpdateUndoLink(child_rid, std::make_optional<UndoLink>(undolink));
+    } else {
+      // 相同txn情况。
+      auto first_undolink = txn_mgr_->GetUndoLink(child_rid);
+      if (first_undolink.has_value()) {
+        // 有上一个版本，对undolog进行增量更新
+        auto undolog = txn_mgr_->GetUndoLog(first_undolink.value());
+        // 简单来说，undolog里保存的一定是最原始的版本，只需要比较modified_fields即可
+        // auto new_tuple = ReconstructTuple(&table_info_->schema_, old_tuple, old_meta, undologs);
+        auto new_undolog = IncrementalUpdateUndolog(update_tuple, undolog ,child_rid, old_meta, old_tuple, table_info_, cur_txn_, txn_mgr_);
+            // GenerateDeleteUndolog(child_rid, undologs[0].ts_, new_tuple.value(), table_info_, cur_txn_, txn_mgr_);
+        // 直接修改上一个UndoLog的信息，不需要进行增删
+        cur_txn_->ModifyUndoLog(first_undolink.value().prev_log_idx_, new_undolog);
+      } else {
+        // 不存在上一个版本，是新插入的情况。
+        //  什么都不需要做，直接跳出更新
+      }
+    }
+    // 接下来对tuple和txn都进行更新
+    cur_txn_->AppendWriteSet(table_info_->oid_, child_rid);
+    // table_info_->table_->UpdateTupleMeta(TupleMeta{cur_txn_->GetTransactionTempTs(), false},child_rid);
+    table_info_->table_->UpdateTupleInPlace(TupleMeta{cur_txn_->GetTransactionTempTs(), false}, update_tuple, child_rid);
+    // todo: 更新index
   }
   is_updated_ = true;
   std::vector<Value> result = {{TypeId::INTEGER, count_}};

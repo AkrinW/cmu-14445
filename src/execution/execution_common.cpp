@@ -208,9 +208,94 @@ auto GenerateDeleteUndolog(const RID &rid, const timestamp_t &ts, const Tuple &b
   // 还要考虑同个txn恢复的情况，传表的tuplemeta也不对。直接把正确的ts做参数传入。
   auto undolink = txn_mgr->GetUndoLink(rid);
   if (undolink.has_value()) {
+    // 这里出现了bug，原因是delete时用的相同的Generate函数，把它修改成和update一样的两个函数。
+    // 重写有点麻烦，放到delete函数里直接修改了。
     return UndoLog{is_deleted, modified_fields, base_tuple, ts, undolink.value()};
   }
   return UndoLog{is_deleted, modified_fields, base_tuple, ts};
 }
+
+auto GenerateUpdateUndolog(const Tuple &new_tuple, const RID &rid, const TupleMeta &base_meta, const Tuple &base_tuple, 
+const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+  // Undolog参考测试里的格式
+  auto schema = table_info->schema_;
+  auto column_count = schema.GetColumnCount();
+  auto timestamp = base_meta.ts_;
+  std::vector<bool> modified_field;
+  modified_field.reserve(column_count);
+  auto undolink = txn_mgr->GetUndoLink(rid);
+  if (base_meta.is_deleted_) {
+    for (uint32_t i = 0; i < column_count; ++i) {
+      modified_field.push_back(false);
+    }
+    // delete的情况下，undolink必定存在上一个值
+    return UndoLog{true, modified_field, Tuple{}, timestamp, undolink.value()};
+  }
+  // 不为delete，需要遍历tuple的每一个值确定是否变化，并且生成新的schema。
+  std::vector<uint32_t> attrs{};
+  std::vector<Value> change_value{};
+  for (uint32_t i = 0; i < table_info->schema_.GetColumnCount(); ++i) {
+    auto new_value = new_tuple.GetValue(&schema,i);
+    auto old_value = base_tuple.GetValue(&schema, i);
+    
+    if (!new_value.CompareExactlyEquals(old_value)) {
+      modified_field.push_back(true);
+      attrs.push_back(i);
+      change_value.push_back(old_value);
+    } else {
+      modified_field.push_back(false);
+    }
+  }
+  auto change_schema = Schema::CopySchema(&schema, attrs);
+  Tuple change_tuple{change_value, &change_schema};
+  if (undolink.has_value()) {
+    return UndoLog{false, modified_field, change_tuple, timestamp, undolink.value()};
+  }
+  return UndoLog{false, modified_field, change_tuple, timestamp};
+}
+
+auto IncrementalUpdateUndolog(const Tuple &new_tuple, const UndoLog &base_undolog, const RID &rid, const TupleMeta &base_meta, 
+const Tuple &base_tuple, const TableInfo *table_info, Transaction *txn, TransactionManager *txn_mgr)->UndoLog {
+  // Undolog参考测试里的格式
+  if (base_undolog.is_deleted_) {
+    return base_undolog;
+  }
+  auto schema = table_info->schema_;
+  auto column_count = schema.GetColumnCount();
+  auto timestamp = base_undolog.ts_;
+  std::vector<bool> modified_field;
+  modified_field.reserve(column_count);
+  auto undolink = base_undolog.prev_version_;
+  // 对于undolog里的不完整tuple，还需要先构造出对应的schema才能继续。
+  auto undolog_schema =  GetUndoLogSchema(&schema, base_undolog);
+  // 重新构造一个新的schema和tuple
+  std::vector<uint32_t> attrs{};
+  std::vector<Value> change_value{};
+  uint32_t sub = 0; // sub用于遍历undolog里tuple的值
+  for (uint32_t i = 0; i < column_count; ++i) {
+    if (base_undolog.modified_fields_[i]) {
+      // 原本的undolog就已经有值了。直接加入。
+      modified_field.push_back(true);
+      attrs.push_back(i);
+      change_value.push_back(base_undolog.tuple_.GetValue(&undolog_schema, sub));
+      ++sub;
+    } else {
+      // 没有值的情况，比较一下newtuple和basetuple是否一样。
+      auto old_value = base_tuple.GetValue(&schema, i);
+      auto new_value = new_tuple.GetValue(&schema, i);
+      if (!new_value.CompareExactlyEquals(old_value)) {
+        modified_field.push_back(true);
+        attrs.push_back(i);
+        change_value.push_back(old_value);
+      } else {
+        modified_field.push_back(false);
+      }
+    }
+  }
+  auto change_schema = Schema::CopySchema(&schema, attrs);
+  Tuple change_tuple{change_value, &change_schema};
+  return UndoLog{false, modified_field, change_tuple, timestamp, undolink};
+}
+
 
 }  // namespace bustub

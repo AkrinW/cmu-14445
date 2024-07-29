@@ -187,7 +187,7 @@ TEST(TxnExecutorTest, InsertDeleteConflictTest) {  // NOLINT
   WithTxn(txn7, CommitTxn(*bustub, _var, _txn));
 }
 
-TEST(TxnExecutorTest, DISABLED_UpdateTest1) {  // NOLINT
+TEST(TxnExecutorTest, UpdateTest1) {  // NOLINT
   fmt::println(stderr, "--- UpdateTest1: no undo log ---");
   auto bustub = std::make_unique<BustubInstance>();
   auto empty_table = IntResult{};
@@ -254,7 +254,7 @@ TEST(TxnExecutorTest, DISABLED_UpdateTest1) {  // NOLINT
   TableHeapEntryNoMoreThan(*bustub, table_info, 1);
 }
 
-TEST(TxnExecutorTest, DISABLED_UpdateTest2) {  // NOLINT
+TEST(TxnExecutorTest, UpdateTest2) {  // NOLINT
   fmt::println(stderr, "--- UpdateTest2: update applied on insert ---");
   auto bustub = std::make_unique<BustubInstance>();
   auto empty_table = IntResult{};
@@ -326,7 +326,7 @@ TEST(TxnExecutorTest, DISABLED_UpdateTest2) {  // NOLINT
   TableHeapEntryNoMoreThan(*bustub, table_info, 1);
 }
 
-TEST(TxnExecutorTest, DISABLED_UpdateTestWithUndoLog) {  // NOLINT
+TEST(TxnExecutorTest, UpdateTestWithUndoLog) {  // NOLINT
   fmt::println(stderr, "--- UpdateTestWithUndoLog: update applied on a version chain with undo log ---");
   auto bustub = std::make_unique<BustubInstance>();
   auto empty_table = IntResult{};
@@ -412,7 +412,7 @@ TEST(TxnExecutorTest, DISABLED_UpdateTestWithUndoLog) {  // NOLINT
   TableHeapEntryNoMoreThan(*bustub, table_info, 1);
 }
 
-TEST(TxnExecutorTest, DISABLED_UpdateConflict) {  // NOLINT
+TEST(TxnExecutorTest, UpdateConflict) {  // NOLINT
   {
     fmt::println(stderr, "--- UpdateConflict1: simple case, insert and two txn update it ---");
     auto bustub = std::make_unique<BustubInstance>();
