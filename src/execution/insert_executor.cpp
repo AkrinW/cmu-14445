@@ -64,7 +64,7 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
       break;
     }
     *rid = new_tuple_rid.value();
-    
+
     // insert to index
     for (auto &index : table_indexes) {
       auto key = tuple->KeyFromTuple(table_schema, index->key_schema_, index->index_->GetKeyAttrs());

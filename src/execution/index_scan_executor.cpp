@@ -24,6 +24,7 @@ IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanP
 }
 
 // init里的东西不能随便挪到next中。原因和执行器的执行方式有关系。
+// 测试执行的方式是一次只输入一个key值，因此直接在init里获取值。
 void IndexScanExecutor::Init() {
   auto table_schema = index_info_->key_schema_;
   auto key = plan_->pred_key_;
@@ -36,6 +37,7 @@ void IndexScanExecutor::Init() {
 }
 
 auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  // 模仿project3 和 seqscan修改index，具体而言，获取到rid后，检查undolog即可
   if (is_scaned_) {
     return false;
   }
