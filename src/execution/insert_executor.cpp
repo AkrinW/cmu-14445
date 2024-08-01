@@ -45,16 +45,34 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   int row_num = 0;
   TupleMeta meta = {txn->GetTransactionTempTs(), false};
   while (child_executor_->Next(tuple, rid)) {
+    // 需要先查找主键是不是已经插入到index里了。
+    for (auto &index : table_indexes) {
+      if (!index->is_primary_key_) {
+        continue;
+      }
+      auto key = tuple->KeyFromTuple(table_schema, index->key_schema_, index->index_->GetKeyAttrs());
+      std::vector<RID> tmp{};
+      index->index_->ScanKey(key, &tmp, txn);
+      if (!tmp.empty()) {
+        txn->SetTainted();
+        throw ExecutionException("Insert failed, exist key.");
+      }
+    }
     // try: insert tuple from child to table
     auto new_tuple_rid = table_info->table_->InsertTuple(meta, *tuple);
     if (!new_tuple_rid.has_value()) {
       break;
     }
     *rid = new_tuple_rid.value();
+    
     // insert to index
     for (auto &index : table_indexes) {
       auto key = tuple->KeyFromTuple(table_schema, index->key_schema_, index->index_->GetKeyAttrs());
-      index->index_->InsertEntry(key, *rid, exec_ctx_->GetTransaction());
+      if (!index->index_->InsertEntry(key, *rid, exec_ctx_->GetTransaction()) && index->is_primary_key_) {
+        // 插入失败，并且是主键的情况下，说明这个主键被别的txn插入了，这时候同样设置为tainted
+        txn->SetTainted();
+        throw ExecutionException("Insert failed, exist key.");
+      }
     }
     ++row_num;
     // 需要更新txn的write_set与txn_mgr的version_info。
@@ -65,6 +83,7 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   std::vector<Value> result = {{TypeId::INTEGER, row_num}};
   *tuple = Tuple(result, &GetOutputSchema());
   return true;
+
   // // project3
   // if (is_done_) {
   //   return false;
