@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 #include "execution/executors/index_scan_executor.h"
+#include "execution/execution_common.h"
+
 
 namespace bustub {
 IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan)
@@ -33,6 +35,8 @@ void IndexScanExecutor::Init() {
   Tuple index_key(values, &table_schema);
   result_rid_.clear();
   htable_->ScanKey(index_key, &result_rid_, exec_ctx_->GetTransaction());
+  cur_ts_rd_ = exec_ctx_->GetTransaction()->GetReadTs();
+  cur_ts_txn_ = exec_ctx_->GetTransaction()->GetTransactionId();
   is_scaned_ = false;
 }
 
@@ -46,13 +50,36 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (result_rid_.empty()) {
     return false;
   }
-  TupleMeta meta{};
-  meta = table_heap_->GetTuple(*result_rid_.begin()).first;
-  if (!meta.is_deleted_) {
-    *tuple = table_heap_->GetTuple(*result_rid_.begin()).second;
-    *rid = *result_rid_.begin();
+  *rid = result_rid_.front();
+  auto [meta, get_tuple] = table_heap_->GetTuple(*rid);
+  if (meta.ts_ == cur_ts_txn_ || meta.ts_ <= cur_ts_rd_) {
+    *tuple = get_tuple;
+    if (meta.is_deleted_) {
+      return false;
+    }
+  } else {
+    std::vector<UndoLog> undologs{};
+    CreateUndolog(*rid, cur_ts_rd_, exec_ctx_->GetTransactionManager(), undologs);
+    // 无法构建，跳过tuple
+    if (undologs.empty()) {
+      return false;
+    }
+    auto new_tuple = ReconstructTuple(&table_info_->schema_,get_tuple,meta,undologs);
+    if (!new_tuple.has_value()) {
+      // 没有查到或者是已删除的，跳过这个tuple
+      return false;
+    }
+    *tuple = std::move(new_tuple.value());
   }
   return true;
+  // // project 3
+  // TupleMeta meta{};
+  // meta = table_heap_->GetTuple(*result_rid_.begin()).first;
+  // if (!meta.is_deleted_) {
+  //   *tuple = table_heap_->GetTuple(*result_rid_.begin()).second;
+  //   *rid = *result_rid_.begin();
+  // }
+  // return true;
 }
 
 }  // namespace bustub

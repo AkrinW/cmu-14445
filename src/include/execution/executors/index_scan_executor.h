@@ -53,5 +53,10 @@ class IndexScanExecutor : public AbstractExecutor {
   TableHeap *table_heap_;
 
   bool is_scaned_{false};  // 很重要，没有完成标志，会卡死循环。
+
+  // project 4
+  timestamp_t cur_ts_rd_{INVALID_TS};
+  timestamp_t cur_ts_txn_{INVALID_TS};
+  // Schema cur_schema_;
 };
 }  // namespace bustub
